@@ -1,0 +1,174 @@
+.topbar {
+    font-family: Impact, Charcoal, sans-serif;
+    position: sticky;
+    top: 0;
+    display: block;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 12px;
+    width: 98%;
+    backdrop-filter: blur(10px);
+    background-color: #ffffff85;
+}
+
+.maintitle {
+    position: absolute;
+    left: 12px;
+    font-size: 30px;
+    color: #000000;
+    text-decoration: none;
+}
+
+.searchbar {
+    width: 40%;
+    max-width: 420px;
+    min-width: 160px;
+    padding: 6px 8px;
+    position: relative;
+    left: 35%;
+    box-sizing: border-box;
+    border-radius: 15px;
+}
+
+.settings {
+    position: absolute;
+    right: 12px;
+}
+
+.notif {
+    position: absolute;
+    right: 60px;
+}
+
+.notiflogo {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+.settingslogo {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+/* video cards */
+
+.gridcontent {
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* grille responsive : s'adapte à la largeur */
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+/* carte vidéo */
+.video-card {
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+/* miniature image */
+.video-card .thumbnail {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+}
+
+/* meta sous la miniature */
+.video-card .meta {
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+/* logo chaine */
+.video-card .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #ddd;
+    flex-shrink: 0;
+}
+
+/* titre / infos */
+.video-card .info {
+    flex: 1;
+}
+.video-card .title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 6px 0;
+    color: #111;
+    line-height: 1.2;
+    text-decoration: none;
+}
+.video-card .sub {
+    font-size: 12px;
+    color: #666;
+    text-decoration: none;
+}
+
+
+
+/* Page vidéo */
+
+.suggestionspanel {
+    flex: 30%;
+}
+
+.contentwatch {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 20px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.videopanel {
+    flex: 0 0 68%;
+    max-width: 68%;
+}
+
+.videopanel video {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.videopanel .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #ddd;
+    flex-shrink: 0;
+}
+
+.videopanel .info {
+    flex: 1;
+}
+.videopanel .title {
+    font-size: 40px;
+    font-weight: 600;
+    margin: 0 0 6px 0;
+    color: #111;
+    line-height: 1.2;
+    text-decoration: none;
+}
+.videopanel .sub {
+    font-size: 20px;
+    color: #666;
+    text-decoration: none;
+}
