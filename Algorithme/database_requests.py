@@ -23,7 +23,7 @@ def close_connection(cur, conn):
 
 def get_all_videos():
     cur, conn = connection()
-    cur.execute("SELECT * from videos;",[])
+    cur.execute("SELECT v.videourl, v.user_pk, COUNT(DISTINCT l.videourl) as nb_likes, COUNT(DISTINCT views.videourl)as nb_views from videos v LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl GROUP BY v.videourl;",[])
     result = cur.fetchall()
     close_connection(cur, conn)
 

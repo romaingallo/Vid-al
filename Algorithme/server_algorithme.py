@@ -6,14 +6,14 @@ app = Flask(__name__)
 CORS(app)  # autorise toutes les origines (adapter en prod)
 
 def convert_sql_output_to_json(data_input):
-    # Input  : [(url0, nb_view, nb_likes, user_pk), (url1, nb_view, nb_likes, user_pk)]
+    # Input  : [(url0, user_pk, nb_likes, nb_view), (url1, user_pk, nb_likes, nb_view)]
     # Output : [
     #     {"channel": "Chaîne A", "views": "12k", "likes": "3" , "url": "video_test_00"},
     #     {"channel": "Chaîne B", "views": "4k" , "likes": "10", "url": "video_test_01"}
     # ]
     data_output = []
     for video_data in data_input:
-        data_output.append({"channel": video_data[3], "views": str(video_data[1]), "likes": f"{video_data[2]}" , "url": video_data[0]})
+        data_output.append({"channel": video_data[1], "views": str(video_data[3]), "likes": f"{video_data[2]}" , "url": video_data[0]})
     return data_output
 
 @app.route('/api/videos')
