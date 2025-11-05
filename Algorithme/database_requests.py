@@ -1,5 +1,7 @@
 import psycopg2
 from psycopg2 import sql
+import hashlib
+from time import sleep
 
 def connection():
     conn = psycopg2.connect(
@@ -47,6 +49,57 @@ def get_all_videos_from_channel(channel_usename):
     close_connection(cur, conn)
 
     return result
+
+def get_user_by_name(username):
+    cur, conn = connection()
+    cur.execute("""SELECT 
+                username
+            FROM users
+            WHERE username = %s
+            ;""",[username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+
+    if len(result) > 0 : 
+        for i in range(result) :
+            result[i] = result[i][0]
+
+    return result
+
+def add_new_user(username, password):
+
+    hashed_password = hashlib.sha256(password.encode('UTF-8')).hexdigest()
+
+    cur, conn = connection()
+    cur.execute("""INSERT INTO users 
+                (username, password, register_date) 
+                VALUES (%s, %s, current_date)
+                ;""",
+                [username, hashed_password])
+
+    close_connection(cur, conn)
+
+    return True
+
+def authentification(username, password):
+
+    sleep(0.05)
+
+    hashed_password = hashlib.sha256(password.encode('UTF-8')).hexdigest()
+
+    cur, conn = connection()
+    cur.execute("""SELECT 
+                username, password
+                FROM users
+                WHERE username = %s
+                ;""",[username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+
+    if len(result) > 0 :
+        if hashed_password == result[0][1] : return True
+
+    return False
 
 if __name__ == "__main__" :
     print(get_all_videos())
