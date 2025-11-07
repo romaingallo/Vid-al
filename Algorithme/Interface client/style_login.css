@@ -1,0 +1,19 @@
+.form{
+    text-align: center;
+}
+
+.textinforegister{
+    text-align: center;
+    margin: 10px 0;
+}
+
+.boxinput{
+    width: 25%;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 2px solid black;
+}
+
+/* .usernametext{
+
+} */

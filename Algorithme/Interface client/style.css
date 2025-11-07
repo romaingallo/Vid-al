@@ -30,7 +30,7 @@
     border-radius: 15px;
 }
 
-.settings {
+.user {
     position: absolute;
     right: 12px;
 }
@@ -46,9 +46,9 @@
     object-fit: cover;
 }
 
-.settingslogo {
-    width: 40px;
-    height: 40px;
+.userlogo {
+    width: 38px;
+    height: 38px;
     object-fit: cover;
 }
 

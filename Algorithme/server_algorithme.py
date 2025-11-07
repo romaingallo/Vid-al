@@ -10,6 +10,8 @@ app.secret_key = "secret_key"
 app.permanent_session_lifetime = timedelta(minutes=5)
 CORS(app)  # autorise toutes les origines (adapter en prod)
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
 def convert_sql_output_to_json(data_input):
     # Input  : [(url0, user_pk, nb_likes, nb_view), (url1, user_pk, nb_likes, nb_view)]
     # Output : [
@@ -43,7 +45,9 @@ def login():
             return redirect(url_for('login', alert = "Invalid password or username."))
     else : 
         if "user" in session:
-            redirect(url_for('home'))
+            print("sss")
+            if "user" in session: session.pop("user", None)
+            return redirect(url_for('home'))
         return app.send_static_file('login.html')
 
 @app.route('/register', methods=["POST", "GET"])
@@ -68,7 +72,7 @@ def register():
 
 @app.route('/logout')
 def logout():
-    session.pop("user", None)
+    if "user" in session: session.pop("user", None)
     return redirect(url_for('home'))
 
 @app.route('/api/videos')
@@ -90,6 +94,37 @@ def channel(channelId):
     #     {"channel": "Chaîne B", "views": "4k" , "likes": "10", "url": "video_test_01"}
     # ]
     return jsonify(data)
+
+@app.route('/pfp')
+def pfp():
+    if "user" in session:
+        images_dir = os.path.join(current_dir, 'Interface client', 'images', 'profile_pictures')
+        pfp_path = os.path.join(images_dir, 'Fur.png')
+
+        # Vérifier si le fichier existe
+        if not os.path.exists(pfp_path):
+            return "Profile picture not found", 404
+        
+        return send_file(
+            pfp_path,
+            mimetype='image/png',
+            as_attachment=False,
+            conditional=True  # Active le support des requêtes partielles
+        )
+    else :
+        images_dir = os.path.join(current_dir, 'Interface client', 'images')
+        pfp_path = os.path.join(images_dir, 'user.svg')
+
+        # Vérifier si le fichier existe
+        if not os.path.exists(pfp_path):
+            return "Profile picture not found", 404
+        
+        return send_file(
+            pfp_path,
+            mimetype='image/svg+xml',
+            as_attachment=False,
+            conditional=True  # Active le support des requêtes partielles
+        )
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)
