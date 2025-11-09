@@ -32,12 +32,42 @@ conn.autocommit = True
 #             FROM users
 #             WHERE username = %s
 #             ;""",['Romai'])
-cur.execute("""SELECT 
-                username, password
-            FROM users
-            WHERE username = %s
-            ;""",['One'])
-print(cur.fetchall())
+# cur.execute("""SELECT 
+#                 username, password
+#             FROM users
+#             WHERE username = %s
+#             ;""",['One'])
+# cur.execute("""WITH agg AS (
+#                 SELECT is_dislike, COUNT(*) AS nb
+#                 FROM has_been_liked_by
+#                 WHERE videourl = %s
+#                 GROUP BY is_dislike
+#             )
+#             SELECT v.is_dislike, COALESCE(agg.nb, 0) AS nb
+#             FROM (VALUES (false), (true), (NULL::boolean)) AS v(is_dislike)
+#             LEFT JOIN agg ON (agg.is_dislike IS NOT DISTINCT FROM v.is_dislike)
+#             ORDER BY v.is_dislike
+#             ;""",['video_test_01'])
+# cur.execute("""INSERT INTO has_been_liked_by (videourl,user_pk,is_dislike)
+# 	VALUES (%s,%s,%s)
+#         ;""", ['video_test_00','1','false'])
+# cur.execute("""SELECT user_pk
+#             FROM users
+#             WHERE username = %s
+#         ;""", ['Romain'])
+# cur.execute("""SELECT is_dislike
+#             FROM has_been_liked_by
+#             LEFT JOIN users ON has_been_liked_by.user_pk = users.user_pk
+#             WHERE users.username = %s AND has_been_liked_by.videourl = %s
+#         ;""", ['Romain', 'video_test_01'])
+
+cur.execute("""UPDATE has_been_liked_by hblb
+        SET is_dislike=%s
+        WHERE hblb.videourl=%s
+        AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
+        ;""", ['true', 'video_test_01', 'Romain'])
+
+# print(cur.fetchall())
 
 cur.close()
 conn.close()

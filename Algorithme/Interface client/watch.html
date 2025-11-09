@@ -13,7 +13,14 @@
             <a class="avatar" aria-hidden="true" href="/watch.html"></a>
             <div class="info">
                 <div><a id="title" class="title" href="/watch.html">Titre de la vidéo exemple #000</a></div>
-                <div><a id="sub" class="sub" href="/watch.html">Chaîne • 000k vues • 000 jours</a> Boutton Like/Dislike</div>
+                <div>
+                    <a id="sub" class="sub" href="/watch.html">Chaîne • 000k vues • 000 jours</a>
+                    Boutton Like/Dislike
+                    <div class="actions">
+                        <button id="btn-like" class="btn" aria-pressed="false">Like <span id="like-count">{{nb_likes}}</span></button>
+                        <button id="btn-dislike" class="btn" aria-pressed="false">Dislike <span id="dislike-count">{{nb_dislikes}}</span></button>
+                    </div>
+                </div>
             </div>
             <div id="description">Description</div>
             <div id="comments">Commentaires</div>
@@ -30,4 +37,5 @@
          </script>
     <script src="/video_source.js"></script>
     <script src="/script.js"></script>
+    <script src="/watch_reaction.js"></script>
 {% endblock %}

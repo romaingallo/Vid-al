@@ -2,6 +2,7 @@ import psycopg2
 from psycopg2 import sql
 import hashlib
 from time import sleep
+from utils import *
 
 def connection():
     conn = psycopg2.connect(
@@ -29,7 +30,7 @@ def get_all_videos():
     result = cur.fetchall()
     close_connection(cur, conn)
 
-    return result
+    return convert_sql_output_to_list_for_card(result)
 
 def get_all_videos_from_channel(channel_usename):
     cur, conn = connection()
@@ -48,7 +49,7 @@ def get_all_videos_from_channel(channel_usename):
     result = cur.fetchall()
     close_connection(cur, conn)
 
-    return result
+    return convert_sql_output_to_list_for_card(result)
 
 def get_user_by_name(username):
     cur, conn = connection()
@@ -101,5 +102,74 @@ def authentification(username, password):
 
     return False
 
+def get_reactions_on_video(video_id):
+    cur, conn = connection()
+    cur.execute("""WITH agg AS (
+                SELECT is_dislike, COUNT(*) AS nb
+                FROM has_been_liked_by
+                WHERE videourl = %s
+                GROUP BY is_dislike
+            )
+            SELECT v.is_dislike, COALESCE(agg.nb, 0) AS nb
+            FROM (VALUES (false), (true), (NULL::boolean)) AS v(is_dislike)
+            LEFT JOIN agg ON (agg.is_dislike IS NOT DISTINCT FROM v.is_dislike)
+            ORDER BY v.is_dislike
+            ;""",[video_id])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+
+    return convert_sql_output_to_list_for_reactions(result)
+
+def get_user_pk_from_username(username):
+    cur, conn = connection()
+    cur.execute("""SELECT user_pk
+            FROM users
+            WHERE username = %s
+        ;""", [username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+
+    return result[0][0]
+
+def update_like(video_id, username, is_dislike):
+    cur, conn = connection()
+    cur.execute("""UPDATE has_been_liked_by hblb
+        SET is_dislike=%s
+        WHERE hblb.videourl=%s
+        AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
+        ;""", [is_dislike, video_id, username])
+    close_connection(cur, conn)
+
+def add_like_dislike(video_id, username, is_dislike): # Return ok (bool)
+    has_already_liked, already_is_dislike = get_user_has_liked(video_id, username)
+    if has_already_liked and already_is_dislike == is_dislike : return False, "Has already liked/disliked"
+    elif has_already_liked and already_is_dislike != is_dislike : 
+        update_like(video_id, username, is_dislike)
+        return True, "Has already liked/disliked, but has been updated"
+
+    user_pk = get_user_pk_from_username(username) # Otpimisable : faire une seule requete sql
+    cur, conn = connection()
+    is_dislike_request = "false"
+    if is_dislike : is_dislike_request = "true"
+    cur.execute("""INSERT INTO has_been_liked_by (videourl,user_pk,is_dislike)
+	VALUES (%s,%s,%s)
+        ;""", [video_id,user_pk,is_dislike_request])
+    close_connection(cur, conn)
+    return True, "Like/Dislike added successfully"
+
+def get_user_has_liked(video_id, username): # Return (True, is_dislike) if the user has liked or disliked the video
+    cur, conn = connection()
+    cur.execute("""SELECT is_dislike
+            FROM has_been_liked_by
+            LEFT JOIN users ON has_been_liked_by.user_pk = users.user_pk
+            WHERE users.username = %s AND has_been_liked_by.videourl = %s
+        ;""", [username, video_id])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    if len(result)<1 : return (False, False)
+    else:
+        return (True, result[0][0])
+
+
 if __name__ == "__main__" :
-    print(get_all_videos())
+    print(get_user_has_liked("video_test_01", 'One'))

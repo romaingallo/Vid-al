@@ -75,23 +75,36 @@ def logout():
 
 @app.route('/api/videos')
 def videos():
-    # retourner une liste d'exemples; en pratique récupérer depuis DB
-    data = convert_sql_output_to_json(get_all_videos())
-    # data = [
-    #     {"channel": "Chaîne A", "views": "12k", "likes": "3" , "url": "video_test_00"},
-    #     {"channel": "Chaîne B", "views": "4k" , "likes": "10", "url": "video_test_01"}
-    # ]
+    data = get_all_videos()
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>')
 def channel(channelId):
-    # retourner une liste d'exemples; en pratique récupérer depuis DB
-    data = convert_sql_output_to_json(get_all_videos_from_channel(channelId))
-    # data = [
-    #     {"channel": "Chaîne A", "views": "12k", "likes": "3" , "url": "video_test_00"},
-    #     {"channel": "Chaîne B", "views": "4k" , "likes": "10", "url": "video_test_01"}
-    # ]
+    data = get_all_videos_from_channel(channelId)
     return jsonify(data)
+
+@app.route('/api/videos/<video_id>/react', methods=['POST'])
+def react(video_id):
+    data = request.get_json() or {}
+    action = data.get('action')  # 'like', 'dislike', 'get' ...
+    if action == 'get':
+        result = get_reactions_on_video(video_id)
+        return jsonify(result)
+    if action == 'like':
+        if "user" in session:
+            add_like_dislike(video_id, session["user"], False)
+            result = get_reactions_on_video(video_id)
+            return jsonify(result)
+    if action == 'dislike':
+        if "user" in session:
+            add_like_dislike(video_id, session["user"], True)
+            result = get_reactions_on_video(video_id)
+            return jsonify(result)
+    return jsonify({
+        'likes': 111,
+        'dislikes': 111,
+        'user_reaction': None  # 'like' | 'dislike' | None
+    })
 
 @app.route('/pfp')
 def pfp():
@@ -134,7 +147,8 @@ def visit_channel(channel_name):
 
 @app.route('/watch/<video_id>')
 def watch(video_id):
-    return render_template("watch.html", videoId=video_id)
+    reaction_result = get_reactions_on_video(video_id)
+    return render_template("watch.html", videoId=video_id, nb_likes=reaction_result["likes"], nb_dislikes=reaction_result["dislikes"])
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)
