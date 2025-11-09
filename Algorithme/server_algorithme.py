@@ -1,11 +1,11 @@
-from flask import Flask, jsonify, request, send_file, redirect, url_for, session
+from flask import Flask, jsonify, request, send_file, redirect, url_for, session, render_template
 from flask_cors import CORS
 from database_requests import *
 import os
 from datetime import timedelta
 
 INTERFACE_DIR = os.path.join(os.path.dirname(__file__), 'Interface client')
-app = Flask(__name__, static_folder=INTERFACE_DIR, static_url_path='')
+app = Flask(__name__, static_folder=INTERFACE_DIR, static_url_path='', template_folder=INTERFACE_DIR)
 app.secret_key = "secret_key"
 app.permanent_session_lifetime = timedelta(minutes=5)
 CORS(app)  # autorise toutes les origines (adapter en prod)
@@ -31,7 +31,7 @@ def home():
         user = session["user"]
         print("user = " + user)
     else : print("not in session")
-    return app.send_static_file('main.html')
+    return render_template('main.html')
 
 @app.route('/login', methods=["POST", "GET"])
 def login():
@@ -45,10 +45,8 @@ def login():
             return redirect(url_for('login', alert = "Invalid password or username."))
     else : 
         if "user" in session:
-            print("sss")
-            if "user" in session: session.pop("user", None)
-            return redirect(url_for('home'))
-        return app.send_static_file('login.html')
+            return redirect(url_for('visit_channel', channel_name=session["user"]))
+        return render_template('login.html')
 
 @app.route('/register', methods=["POST", "GET"])
 def register():
@@ -68,7 +66,7 @@ def register():
     else : 
         if "user" in session:
             redirect(url_for('home'))
-        return app.send_static_file('register.html')
+        return render_template('register.html')
 
 @app.route('/logout')
 def logout():
@@ -125,6 +123,13 @@ def pfp():
             as_attachment=False,
             conditional=True  # Active le support des requêtes partielles
         )
+    
+@app.route('/visit_channel/<channel_name>')
+def visit_channel(channel_name):
+    if "user" in session : 
+        if session["user"] == channel_name :
+            return render_template("visit_channel.html", name=channel_name, own_profile=True)
+    return render_template("visit_channel.html", name=channel_name, own_profile=False)
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)

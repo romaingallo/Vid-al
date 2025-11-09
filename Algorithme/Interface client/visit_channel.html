@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vidéal</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style_visit_channel.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
 </head>
 <body style="margin: 0;">
-    <div class="topbar" id="topbar"></div><script src="topbar.js"></script>
+    <div class="topbar" id="topbar"></div><script src="/topbar.js"></script>
 
     <div class="channelbar">
+        <h1>{{name}}</h1>
+        {% if own_profile %}
+        <button onclick="window.location.href='/logout';" class="logoutbutton">Log out</button>
+        {% endif %}
         <hr/>
     </div>
     
@@ -22,6 +27,9 @@
 
     <main id="gridcontent" class="gridcontent"></main>
 
-    <script src="script.js"></script>
+    <script type="text/javascript">
+            const channel_name = '{{name}}'
+         </script>
+    <script src="/script.js"></script>
 </body>
 </html>
