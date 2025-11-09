@@ -2,10 +2,10 @@
 const videoElement = document.getElementById('video');
 if (!videoElement) throw new Error('Element #videoElement introuvable');
 
-const params = new URLSearchParams(window.location.search);
-const videoId = params.get('video');
+// const params = new URLSearchParams(window.location.search);
+// const videoId = params.get('video');
 
-if (videoId) {
+if (videoId !== '') {
     const sourceElement = document.createElement('source');
     sourceElement.src = `http://localhost:5002/video/${videoId}`;
     sourceElement.type = 'video/mp4';

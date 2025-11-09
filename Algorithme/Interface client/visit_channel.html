@@ -1,15 +1,11 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends 'base.html' %}
+{% block title %}
     <title>Vidéal</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/style_visit_channel.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
-</head>
-<body style="margin: 0;">
-    <div class="topbar" id="topbar"></div><script src="/topbar.js"></script>
+{% endblock %}
+{% block content %}
 
     <div class="channelbar">
         <h1>{{name}}</h1>
@@ -19,17 +15,11 @@
         <hr/>
     </div>
     
-    
-
-    <div class="sidebar">
-
-    </div>
-
     <main id="gridcontent" class="gridcontent"></main>
 
     <script type="text/javascript">
             const channel_name = '{{name}}'
          </script>
     <script src="/script.js"></script>
-</body>
-</html>
+{% endblock %}
+

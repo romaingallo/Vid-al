@@ -131,5 +131,10 @@ def visit_channel(channel_name):
             return render_template("visit_channel.html", name=channel_name, own_profile=True)
     return render_template("visit_channel.html", name=channel_name, own_profile=False)
 
+
+@app.route('/watch/<video_id>')
+def watch(video_id):
+    return render_template("watch.html", videoId=video_id)
+
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)

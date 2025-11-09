@@ -1,30 +1,19 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends 'base.html' %}
+{% block title %}
     <title>Vidéal</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
-</head>
-<body style="margin: 0;">
-    <div class="topbar" id="topbar"></div><script src="topbar.js"></script>
-    
-    <div class="sidebar">
-
-    </div>
-
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
     <main id="contentwatch" class="contentwatch">
 
         <div class="videopanel">
             <video id="video" controls autoplay>
-                <!-- <source src="http://localhost:5002/video/video_test_00" type="video/mp4">
-                Votre navigateur ne supporte pas la balise vidéo. -->
             </video>
-            <a class="avatar" aria-hidden="true" href="watch.html"></a>
+            <a class="avatar" aria-hidden="true" href="/watch.html"></a>
             <div class="info">
-                <div><a id="title" class="title" href="watch.html">Titre de la vidéo exemple #000</a></div>
-                <div><a id="sub" class="sub" href="watch.html">Chaîne • 000k vues • 000 jours</a> Boutton Like/Dislike</div>
+                <div><a id="title" class="title" href="/watch.html">Titre de la vidéo exemple #000</a></div>
+                <div><a id="sub" class="sub" href="/watch.html">Chaîne • 000k vues • 000 jours</a> Boutton Like/Dislike</div>
             </div>
             <div id="description">Description</div>
             <div id="comments">Commentaires</div>
@@ -36,9 +25,9 @@
         
 
     </main>
-
-    <script src="video_source.js"></script>
-    <script src="script.js"></script>
-
-</body>
-</html>
+    <script type="text/javascript">
+            const videoId = '{{videoId}}'
+         </script>
+    <script src="/video_source.js"></script>
+    <script src="/script.js"></script>
+{% endblock %}

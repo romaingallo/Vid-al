@@ -43,10 +43,10 @@ async function loadTitleFromHost(videoId) {
 
 const thumbPath = './images/miniatures/miniature0.jpg';
 async function createCard(i, data = null) {
-    const url = `watch.html?video=${data?.url ?? ``}`;
+    const url = `/watch/${data?.url ?? ``}`;
     const title = await loadTitleFromHost(data?.url) ?? `Erreur de titre`;
     const channel = data?.channel ?? 'Chaîne';
-    const channelurl = `visit_channel/${channel}`;
+    const channelurl = `/visit_channel/${channel}`;
     const views = data?.views ?? `${Math.floor(Math.random()*5+1)}k`;
     const likes = data?.likes ?? `${Math.floor(Math.random()*10)+1} jours`;
     const thumb = `http://localhost:5002/thumbnail/${data?.url}`;

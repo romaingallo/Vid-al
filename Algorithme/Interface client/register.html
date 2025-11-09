@@ -1,22 +1,11 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends 'base.html' %}
+{% block title %}
     <title>Vidéal</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="style_login.css">
-    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
-</head>
-<body style="margin: 0;">
-    <div class="topbar" id="topbar"></div><script src="topbar.js"></script>
-    
-    
-
-    <div class="sidebar">
-
-    </div>
-
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style_login.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
     <form action="#" method="post" class="form">
         <label for="usrname" class="usernametext">Username:</label><br>
         <input type="text" id="usrname" name="usrname" class="boxinput"><br>
@@ -26,6 +15,5 @@
     </form>
 
     <script src="alert.js"></script>
+{% endblock %}
 
-</body>
-</html>
