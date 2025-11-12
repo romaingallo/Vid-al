@@ -89,20 +89,24 @@ def react(video_id):
     action = data.get('action')  # 'like', 'dislike', 'get' ...
     if action == 'get':
         result = get_reactions_on_video(video_id)
+        if "user" in session: 
+            result['personal_like_result'] = get_user_has_liked_for_json(video_id, session["user"])
+        else :
+            result['personal_like_result'] = 'no'
+        print(result)
         return jsonify(result)
-    if action == 'like':
+    if action == 'like' or action == 'dislike':
         if "user" in session:
-            add_like_dislike(video_id, session["user"], False)
+            _, a = add_like_dislike(video_id, session["user"], action == 'dislike')
+            print(a)
             result = get_reactions_on_video(video_id)
-            return jsonify(result)
-    if action == 'dislike':
-        if "user" in session:
-            add_like_dislike(video_id, session["user"], True)
-            result = get_reactions_on_video(video_id)
+            result['personal_like_result'] = get_user_has_liked_for_json(video_id, session["user"])
+            print(result)
             return jsonify(result)
     return jsonify({
-        'likes': 111,
-        'dislikes': 111,
+        'likes': 'x',
+        'dislikes': 'x',
+        'personal_like_result': 'no',
         'user_reaction': None  # 'like' | 'dislike' | None
     })
 
@@ -148,7 +152,16 @@ def visit_channel(channel_name):
 @app.route('/watch/<video_id>')
 def watch(video_id):
     reaction_result = get_reactions_on_video(video_id)
-    return render_template("watch.html", videoId=video_id, nb_likes=reaction_result["likes"], nb_dislikes=reaction_result["dislikes"])
+    green_state = 'green0'
+    red_state   = 'red0'
+    if "user" in session: 
+        like_state = get_user_has_liked_for_json(video_id, session["user"])
+        if like_state == 'like': green_state = 'green100'
+        elif like_state == 'dislike' : red_state = 'red100'
+    return render_template("watch.html", 
+                           videoId=video_id, 
+                           nb_likes=reaction_result["likes"], nb_dislikes=reaction_result["dislikes"], 
+                           green_state=green_state, red_state=red_state)
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)

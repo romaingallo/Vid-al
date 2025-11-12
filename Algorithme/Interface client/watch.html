@@ -2,6 +2,7 @@
 {% block title %}
     <title>Vidéal</title>
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style_watch.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
 {% endblock %}
 {% block content %}
@@ -17,8 +18,12 @@
                     <a id="sub" class="sub" href="/watch.html">Chaîne • 000k vues • 000 jours</a>
                     Boutton Like/Dislike
                     <div class="actions">
-                        <button id="btn-like" class="btn" aria-pressed="false">Like <span id="like-count">{{nb_likes}}</span></button>
-                        <button id="btn-dislike" class="btn" aria-pressed="false">Dislike <span id="dislike-count">{{nb_dislikes}}</span></button>
+                        <button id="btn-like" class="btn {{green_state}}" aria-pressed="false">
+                            Like <span id="like-count">{{nb_likes}}</span>
+                        </button>
+                        <button id="btn-dislike" class="btn {{red_state}}" aria-pressed="false">
+                            Dislike <span id="dislike-count">{{nb_dislikes}}</span>
+                        </button>
                     </div>
                 </div>
             </div>

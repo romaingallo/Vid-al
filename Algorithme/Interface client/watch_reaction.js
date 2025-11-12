@@ -31,23 +31,24 @@ async function request(action){
 }
 
 async function react(action){
-    // 
+    likeBtn.classList.toggle('green0', false);
+    dislikeBtn.classList.toggle('red0', false);
+    likeBtn.classList.toggle('green100', false);
+    dislikeBtn.classList.toggle('red100', false);
+    likeBtn.classList.toggle('green50', action == 'like');
+    dislikeBtn.classList.toggle('red50', action == 'dislike');
     const data = await request(action);
+
     likeCount.textContent = data.likes;
     dislikeCount.textContent = data.dislikes;
-    // likeBtn.classList.toggle('active', data.user_reaction === 'like');
-    // dislikeBtn.classList.toggle('active', data.user_reaction === 'dislike');
-    // likeBtn.setAttribute('aria-pressed', data.user_reaction === 'like');
-    // dislikeBtn.setAttribute('aria-pressed', data.user_reaction === 'dislike');
-}
+    likeBtn.classList.toggle('green50', false);
+    dislikeBtn.classList.toggle('red50', false);
+    likeBtn.classList.toggle('green100', data.personal_like_result == 'like');
+    dislikeBtn.classList.toggle('red100', data.personal_like_result == 'dislike');
+    likeBtn.classList.toggle('green0', data.personal_like_result != 'like');
+    dislikeBtn.classList.toggle('red0', data.personal_like_result != 'dislike');
 
-// async function initReaction(){
-//     const initdata = await request('get');
-//     // console.log(initdata);
-//     likeCount.textContent = initdata.likes;
-//     dislikeCount.textContent = initdata.dislikes;
-// }
-// initReaction();
+}
 
 likeBtn.addEventListener('click', () => react('like'));
 dislikeBtn.addEventListener('click', () => react('dislike'));

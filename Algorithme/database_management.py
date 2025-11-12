@@ -61,11 +61,16 @@ conn.autocommit = True
 #             WHERE users.username = %s AND has_been_liked_by.videourl = %s
 #         ;""", ['Romain', 'video_test_01'])
 
-cur.execute("""UPDATE has_been_liked_by hblb
-        SET is_dislike=%s
-        WHERE hblb.videourl=%s
-        AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
-        ;""", ['true', 'video_test_01', 'Romain'])
+# cur.execute("""UPDATE has_been_liked_by hblb
+#         SET is_dislike=%s
+#         WHERE hblb.videourl=%s
+#         AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
+#         ;""", ['true', 'video_test_01', 'Romain'])
+
+cur.execute("""DELETE FROM has_been_liked_by hblb
+	WHERE videourl= %s 
+	AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
+	;""", ['video_test_00', 'One'])
 
 # print(cur.fetchall())
 

@@ -140,9 +140,22 @@ def update_like(video_id, username, is_dislike):
         ;""", [is_dislike, video_id, username])
     close_connection(cur, conn)
 
+def delete_like(video_id, username):
+    try:
+        cur, conn = connection()
+        cur.execute("""DELETE FROM has_been_liked_by hblb
+            WHERE videourl= %s 
+            AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
+            ;""", [video_id, username])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
 def add_like_dislike(video_id, username, is_dislike): # Return ok (bool)
     has_already_liked, already_is_dislike = get_user_has_liked(video_id, username)
-    if has_already_liked and already_is_dislike == is_dislike : return False, "Has already liked/disliked"
+    if has_already_liked and already_is_dislike == is_dislike : 
+        return delete_like(video_id, username), "Has already liked/disliked, tried removing it"
     elif has_already_liked and already_is_dislike != is_dislike : 
         update_like(video_id, username, is_dislike)
         return True, "Has already liked/disliked, but has been updated"
@@ -170,6 +183,15 @@ def get_user_has_liked(video_id, username): # Return (True, is_dislike) if the u
     else:
         return (True, result[0][0])
 
+def get_user_has_liked_for_json(video_id, username):
+    has_already_liked, already_is_dislike = get_user_has_liked(video_id, username)
+    if has_already_liked : 
+        if already_is_dislike :
+            return 'dislike'
+        else :
+            return 'like'
+    else :
+        return 'no'
 
 if __name__ == "__main__" :
     print(get_user_has_liked("video_test_01", 'One'))

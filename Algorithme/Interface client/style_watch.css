@@ -1,0 +1,132 @@
+
+.btn {
+  appearance: none;
+  /* background-color: #FAFBFC;#FAFBFC */
+  border: 1px solid rgba(27, 31, 35, 0.15);
+  border-radius: 6px;
+  box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
+  box-sizing: border-box;
+  color: #24292E;
+  cursor: pointer;
+  display: inline-block;
+  font-family: -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  list-style: none;
+  padding: 6px 16px;
+  position: relative;
+  /* transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1); */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  vertical-align: middle;
+  white-space: nowrap;
+  word-wrap: break-word;
+
+  background: linear-gradient(90deg, #04ff00 0%, #04ff00 50%, #FAFBFC 50%, #FAFBFC 100%);
+  background-position: 102% 0%;
+  background-repeat:no-repeat; 
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+
+.btn.green0{
+  background: linear-gradient(90deg, #04ff00 0%, #04ff00 50%, #FAFBFC 50%, #FAFBFC 100%);
+  background-position: 102% 0%;
+  background-repeat:no-repeat; 
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+.btn.red0{
+  background: linear-gradient(90deg, #ff3300 0%, #ff3300 50%, #FAFBFC 50%, #FAFBFC 100%);
+  background-position: 102% 0%;
+  background-repeat:no-repeat; 
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+.btn.green50{
+  background: linear-gradient(90deg, #04ff00 0%, #04ff00 50%, #FAFBFC 50%, #FAFBFC 100%);
+  background-position: 50% 0%;
+  background-repeat:no-repeat; 
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+.btn.red50{
+  background: linear-gradient(90deg, #ff3300 0%, #ff3300 50%, #FAFBFC 50%, #FAFBFC 100%);
+  background-position: 50% 0%;
+  background-repeat:no-repeat; 
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+.btn.green100{
+  background: linear-gradient(90deg, #04ff00 0%, #04ff00 50%, #FAFBFC 50%, #FAFBFC 100%);
+  background-position: 0% 0%;
+  background-repeat:no-repeat; 
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+.btn.red100{
+  background: linear-gradient(90deg, #ff3300 0%, #ff3300 50%, #FAFBFC 50%, #FAFBFC 100%);
+  background-position: 0% 0%;
+  background-repeat:no-repeat; 
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+
+
+.btn:hover {
+  background-color: #F3F4F6;
+  text-decoration: none;
+  /* transition-duration: 0.1s; */
+}
+
+.btn:disabled {
+  background-color: #FAFBFC;
+  border-color: rgba(27, 31, 35, 0.15);
+  color: #959DA5;
+  cursor: default;
+}
+
+.btn:active {
+  background-color: #EDEFF2;
+  box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
+  transition: none 0s;
+}
+
+.btn:focus {
+  outline: 1px transparent;
+}
+
+.btn:before {
+  display: none;
+}
+
+.btn:-webkit-details-marker {
+  display: none;
+}
+
+.btn.loading {
+  /* background: linear-gradient(90deg, #04ff00 0%, #04ff00 50%, #FAFBFC 50%, #FAFBFC 100%); */
+  background-position: 50% 0%;
+  /* background-repeat:no-repeat;  */
+  /* background-size: 200% 100%;
+  transition: background-position 0.5s ease; */
+  /* animation: loadingBar 0.5s ease-in-out; */
+  /* background: #FAFBFC; */
+}
+
+/* @keyframes loadingBar {
+  0% {
+    background: linear-gradient(90deg, #FAFBFC 0%, #FAFBFC 100%)
+  }
+  100% {
+    background: linear-gradient(90deg, #04ff00 0%, #04ff00 50%, #FAFBFC 51%, #FAFBFC 100%)
+  }
+} */
+
+
+
+
+
+/* background: linear-gradient(90deg, rgba(255, 255, 183, 1.000) 0.000%, rgba(255, 255, 183, 1.000) 33.333%, rgba(248, 79, 86, 1.000) 33.333%, rgba(248, 79, 86, 1.000) 66.667%, rgba(164, 0, 8, 1.000) 66.667% 100.000%) */
