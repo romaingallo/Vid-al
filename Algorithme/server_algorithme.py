@@ -114,15 +114,21 @@ def react(video_id):
 def pfp():
     if "user" in session:
         images_dir = os.path.join(current_dir, 'Interface client', 'images', 'profile_pictures')
-        pfp_path = os.path.join(images_dir, 'Fur.png')
+        pfp_path = os.path.join(images_dir, f'{session["user"]}.png')
+
+        minetype = 'image/png'
 
         # Vérifier si le fichier existe
         if not os.path.exists(pfp_path):
-            return "Profile picture not found", 404
-        
+            minetype = 'image/svg+xml'
+            images_dir = os.path.join(current_dir, 'Interface client', 'images') # Si on ne trouve pas de pfp
+            pfp_path = os.path.join(images_dir, 'default_pfp.svg') # on revoie celle par défault
+            if not os.path.exists(pfp_path):
+                return "Profile picture not found", 404
+
         return send_file(
             pfp_path,
-            mimetype='image/png',
+            mimetype=minetype,
             as_attachment=False,
             conditional=True  # Active le support des requêtes partielles
         )
@@ -140,6 +146,27 @@ def pfp():
             as_attachment=False,
             conditional=True  # Active le support des requêtes partielles
         )
+    
+@app.route('/pfp_of/<username>')
+def pfp_of(username):
+    images_dir = os.path.join(current_dir, 'Interface client', 'images', 'profile_pictures')
+    pfp_path = os.path.join(images_dir, f'{username}.png')
+    minetype = 'image/png'
+
+    # Vérifier si le fichier existe
+    if not os.path.exists(pfp_path):
+        minetype = 'image/svg+xml'
+        images_dir = os.path.join(current_dir, 'Interface client', 'images') # Si on ne trouve pas de pfp
+        pfp_path = os.path.join(images_dir, 'default_pfp.svg') # on revoie celle par défault
+        if not os.path.exists(pfp_path):
+            return "Profile picture not found", 404
+    
+    return send_file(
+        pfp_path,
+        mimetype=minetype,
+        as_attachment=False,
+        conditional=True  # Active le support des requêtes partielles
+    )
     
 @app.route('/visit_channel/<channel_name>')
 def visit_channel(channel_name):

@@ -56,7 +56,7 @@ async function createCard(i, data = null) {
         card.innerHTML = `
             <a class="thumbnaillink" href="${url}"><img class="thumbnail" src="${thumb}" alt="Miniature ${i}"></a>
             <div class="meta">
-                <a class="avatar" aria-hidden="true" href="${channelurl}"></a>
+                <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                 <div class="info">
                     <div><a class="title" href="${url}">${title}</a></div>
                     <div><a class="sub" href="${channelurl}">${channel} • ${views} vues • ${likes} likes</a></div>
