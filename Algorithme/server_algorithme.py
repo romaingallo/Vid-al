@@ -1,13 +1,17 @@
-from flask import Flask, jsonify, request, send_file, redirect, url_for, session, render_template
+from flask import Flask, jsonify, request, send_file, redirect, url_for, session, render_template, flash
 from flask_cors import CORS
 from database_requests import *
 import os
 from datetime import timedelta
+from werkzeug.utils import secure_filename
 
 INTERFACE_DIR = os.path.join(os.path.dirname(__file__), 'Interface client')
 app = Flask(__name__, static_folder=INTERFACE_DIR, static_url_path='', template_folder=INTERFACE_DIR)
 app.secret_key = "secret_key"
 app.permanent_session_lifetime = timedelta(minutes=5)
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'Interface client', 'images', 'profile_pictures')
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000 # max upload file size = 16 megabytes
 CORS(app)  # autorise toutes les origines (adapter en prod)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -93,15 +97,15 @@ def react(video_id):
             result['personal_like_result'] = get_user_has_liked_for_json(video_id, session["user"])
         else :
             result['personal_like_result'] = 'no'
-        print(result)
+
         return jsonify(result)
     if action == 'like' or action == 'dislike':
         if "user" in session:
             _, a = add_like_dislike(video_id, session["user"], action == 'dislike')
-            print(a)
+
             result = get_reactions_on_video(video_id)
             result['personal_like_result'] = get_user_has_liked_for_json(video_id, session["user"])
-            print(result)
+
             return jsonify(result)
     return jsonify({
         'likes': 'x',
@@ -189,6 +193,32 @@ def watch(video_id):
                            videoId=video_id, 
                            nb_likes=reaction_result["likes"], nb_dislikes=reaction_result["dislikes"], 
                            green_state=green_state, red_state=red_state)
+
+
+@app.route('/upload_pfp', methods=['GET', 'POST'])
+def upload_pfp():
+    if "user" in session: 
+        if request.method == 'POST':
+            print(request.url)
+            # check if the post request has the file part
+            if 'file' not in request.files:
+                flash('No file part')
+                return redirect(request.url)
+            file = request.files['file']
+            # If the user does not select a file, the browser submits an
+            # empty file without a filename.
+            if file.filename == '':
+                flash('No selected file')
+                return redirect(request.url)
+            if file and allowed_file(file.filename, ['png']):
+                # filename = secure_filename(file.filename)
+                filename = f'{session["user"]}.png'
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                return redirect(url_for('home'))
+            else :
+                flash('The file should be a png.')
+        return render_template("upload_pfp.html")
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)

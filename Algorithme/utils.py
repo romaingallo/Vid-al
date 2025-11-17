@@ -19,3 +19,7 @@ def convert_sql_output_to_list_for_reactions(data_input):
     # ]
     data_output = {"likes" : data_input[0][1], "dislikes" : data_input[1][1]}
     return data_output
+
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in allowed_extensions

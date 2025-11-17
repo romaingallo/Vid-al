@@ -50,6 +50,7 @@
     width: 38px;
     height: 38px;
     object-fit: cover;
+    border-radius: 50%;
 }
 
 /* video cards */
@@ -98,7 +99,7 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: #ddd;
+    background: #ffffff;
     flex-shrink: 0;
 }
 
