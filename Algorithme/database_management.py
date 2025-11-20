@@ -67,10 +67,34 @@ conn.autocommit = True
 #         AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
 #         ;""", ['true', 'video_test_01', 'Romain'])
 
-cur.execute("""DELETE FROM has_been_liked_by hblb
-	WHERE videourl= %s 
-	AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
-	;""", ['video_test_00', 'One'])
+# cur.execute("""DELETE FROM has_been_liked_by hblb
+# 	WHERE videourl= %s 
+# 	AND hblb.user_pk = (SELECT user_pk FROM users WHERE username=%s)
+# 	;""", ['video_test_00', 'One'])
+
+# cur.execute("""UPDATE public.users
+# 	SET channel_url=%s
+# 	WHERE username=%s
+#         ;""", ['url', 'One'])
+
+# cur.execute("""INSERT INTO public.videos (videourl,user_pk)
+# 	            VALUES (%s,(SELECT user_pk FROM users WHERE username=%s));
+#                 """, ["video_id_aaaa", "One"])
+cur.execute("""INSERT INTO public.videos (videourl, user_pk)
+                VALUES (%s, %s)
+                ON CONFLICT (videourl) DO UPDATE
+                SET user_pk = EXCLUDED.user_pk
+            ;""", ["video_id_aaaa", "7"])
+
+# cur.execute("""SELECT username, channel_url, register_date
+#             FROM users
+#             LEFT JOIN videos ON videos.user_pk = users.user_pk
+#             WHERE videos.videourl = %s
+#         ;""", ['video_test_00'])
+
+
+
+
 
 # print(cur.fetchall())
 

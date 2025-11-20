@@ -44,6 +44,21 @@ def meta_video(video_id):
         as_attachment=False
     )
 
+@app.route('/channelinfo')
+def channelinfo():
+    info_path = os.path.join(current_dir, 'channel_info.json')
+    
+    # Vérifier si le fichier existe
+    if not os.path.exists(info_path):
+        return "channel_info.json non trouvée", 404
+        
+    # Envoyer le fichier 
+    return send_file(
+        info_path,
+        mimetype='application/json',
+        as_attachment=False
+    )
+
 @app.route('/thumbnail/<video_id>')
 def thumbnail_video(video_id):
     # Chemin vers le dossier des vidéos

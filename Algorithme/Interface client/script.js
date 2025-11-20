@@ -29,9 +29,9 @@ async function loadFromServer() {
     }
 }
 
-async function loadTitleFromHost(videoId) {
+async function loadTitleFromHost(videoId, hostURL) {
     try {
-        const res = await fetch(`http://localhost:5002/meta/${videoId}`); // changer l'URL si besoin
+        const res = await fetch(`${hostURL}/meta/${videoId}`); // changer l'URL si besoin
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         return `${data.title}`;
@@ -44,12 +44,12 @@ async function loadTitleFromHost(videoId) {
 const thumbPath = './images/miniatures/miniature0.jpg';
 async function createCard(i, data = null) {
     const url = `/watch/${data?.url ?? ``}`;
-    const title = await loadTitleFromHost(data?.url) ?? `Erreur de titre`;
+    const title = await loadTitleFromHost(data?.url, data?.hostURL) ?? `Erreur de titre`;
     const channel = data?.channel ?? 'Chaîne';
     const channelurl = `/visit_channel/${channel}`;
     const views = data?.views ?? `${Math.floor(Math.random()*5+1)}k`;
     const likes = data?.likes ?? `${Math.floor(Math.random()*10)+1} jours`;
-    const thumb = `http://localhost:5002/thumbnail/${data?.url}`;
+    const thumb = `${data?.hostURL}/thumbnail/${data?.url}`;
 
     const card = document.createElement('article');
         card.className = 'video-card';

@@ -26,7 +26,12 @@ def close_connection(cur, conn):
 
 def get_all_videos():
     cur, conn = connection()
-    cur.execute("SELECT v.videourl, u.username, COUNT(DISTINCT l.videourl) as nb_likes, COUNT(DISTINCT views.videourl)as nb_views from videos v JOIN users u ON v.user_pk = u.user_pk LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl GROUP BY v.videourl, u.username;",[])
+    cur.execute("SELECT v.videourl, u.username, COUNT(DISTINCT l.videourl) as nb_likes, COUNT(DISTINCT views.videourl) as nb_views, u.channel_url as channel_url " \
+    "FROM videos v " \
+    "JOIN users u ON v.user_pk = u.user_pk " \
+    "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
+    "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
+    "GROUP BY v.videourl, u.username, channel_url;",[])
     result = cur.fetchall()
     close_connection(cur, conn)
 
@@ -38,13 +43,14 @@ def get_all_videos_from_channel(channel_usename):
                 v.videourl, 
                 u.username, 
                 COUNT(DISTINCT l.videourl) as nb_likes, 
-                COUNT(DISTINCT views.videourl) as nb_views 
+                COUNT(DISTINCT views.videourl) as nb_views, 
+                u.channel_url as channel_url 
             FROM videos v 
             JOIN users u ON v.user_pk = u.user_pk 
             LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl 
             LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl 
             WHERE u.username = %s
-            GROUP BY v.videourl, u.username
+            GROUP BY v.videourl, u.username, channel_url
             ;""",[channel_usename])
     result = cur.fetchall()
     close_connection(cur, conn)
@@ -193,5 +199,45 @@ def get_user_has_liked_for_json(video_id, username):
     else :
         return 'no'
 
+def update_channel_url(url, username):
+    cur, conn = connection()
+    cur.execute("""UPDATE public.users
+	SET channel_url=%s
+	WHERE username=%s
+        ;""", [url, username])
+    close_connection(cur, conn)
+
+def add_video(video_id, username):
+    user_pk = get_user_pk_from_username(username)
+    if user_pk is None : raise ValueError("user 'One' not found")
+    cur, conn = connection()
+    cur.execute("""INSERT INTO public.videos (videourl, user_pk)
+                VALUES (%s, %s)
+                ON CONFLICT (videourl) DO UPDATE
+                SET user_pk = EXCLUDED.user_pk
+            ;""", [video_id, user_pk])
+    close_connection(cur, conn)
+
+def get_author_info_from_video(video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT username, channel_url, register_date
+            FROM users
+            LEFT JOIN videos ON videos.user_pk = users.user_pk
+            WHERE videos.videourl = %s
+        ;""", [video_id])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    return result[0]
+
+def get_host_url_from_username(username):
+    cur, conn = connection()
+    cur.execute("""SELECT channel_url
+            FROM users
+            WHERE username = %s
+        ;""", [username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    return result[0]
+
 if __name__ == "__main__" :
-    print(get_user_has_liked("video_test_01", 'One'))
+    print(get_host_url_from_username("Quentin"))

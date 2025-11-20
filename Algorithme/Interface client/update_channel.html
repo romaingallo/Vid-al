@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Update channel source</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style_watch.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
+<h1>Update the adresse of the channel server</h1>
+<form method=post>
+    <input type="text" name="newchannelurl"><br>
+    <input type="submit" value="Update">
+</form>
+{% endblock %}

@@ -4,6 +4,7 @@ from database_requests import *
 import os
 from datetime import timedelta
 from werkzeug.utils import secure_filename
+import requests as req
 
 INTERFACE_DIR = os.path.join(os.path.dirname(__file__), 'Interface client')
 app = Flask(__name__, static_folder=INTERFACE_DIR, static_url_path='', template_folder=INTERFACE_DIR)
@@ -174,14 +175,16 @@ def pfp_of(username):
     
 @app.route('/visit_channel/<channel_name>')
 def visit_channel(channel_name):
+    host_url = get_host_url_from_username(channel_name)
     if "user" in session : 
         if session["user"] == channel_name :
-            return render_template("visit_channel.html", name=channel_name, own_profile=True)
-    return render_template("visit_channel.html", name=channel_name, own_profile=False)
+            return render_template("visit_channel.html", name=channel_name, own_profile=True, hostURL=host_url)
+    return render_template("visit_channel.html", name=channel_name, own_profile=False, hostURL=host_url)
 
 
 @app.route('/watch/<video_id>')
 def watch(video_id):
+    _, host_url, _ = get_author_info_from_video(video_id)
     reaction_result = get_reactions_on_video(video_id)
     green_state = 'green0'
     red_state   = 'red0'
@@ -190,16 +193,16 @@ def watch(video_id):
         if like_state == 'like': green_state = 'green100'
         elif like_state == 'dislike' : red_state = 'red100'
     return render_template("watch.html", 
-                           videoId=video_id, 
-                           nb_likes=reaction_result["likes"], nb_dislikes=reaction_result["dislikes"], 
-                           green_state=green_state, red_state=red_state)
+                           videoId = video_id, 
+                           nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], 
+                           green_state = green_state, red_state = red_state,
+                           hostURL = host_url)
 
 
 @app.route('/upload_pfp', methods=['GET', 'POST'])
 def upload_pfp():
     if "user" in session: 
         if request.method == 'POST':
-            print(request.url)
             # check if the post request has the file part
             if 'file' not in request.files:
                 flash('No file part')
@@ -219,6 +222,37 @@ def upload_pfp():
                 flash('The file should be a png.')
         return render_template("upload_pfp.html")
     return redirect(url_for('home'))
+
+@app.route('/update_channel', methods=['GET', 'POST'])
+def update_channel():
+    if "user" in session: 
+        if request.method == 'POST':
+            new_channel_url = request.form["newchannelurl"]
+            # to do : vérif user input
+            channel_info_resp = req.get(f"{new_channel_url}/channelinfo", timeout=5)
+            if channel_info_resp.status_code == 200:
+                resp_dict = channel_info_resp.json()
+                if resp_dict["channel_username"] != session["user"]:
+                    flash("You are not logged in with the right account : your server does not return your username.")
+                    print("You are not logged in with the right account : your server does not return your username.")
+                    return render_template("update_channel.html")
+                for video_id in resp_dict["video_list"]:
+                    video_resp     = req.get(f"{new_channel_url}/video/{video_id}", timeout=5)
+                    meta_resp      = req.get(f"{new_channel_url}/meta/{video_id}", timeout=5)
+                    thumbnail_resp = req.get(f"{new_channel_url}/thumbnail/{video_id}", timeout=5)
+                    # print(video_id, video_resp.status_code, meta_resp.status_code, thumbnail_resp.status_code)
+                    if video_resp.status_code != 200 or meta_resp.status_code != 200 or thumbnail_resp.status_code != 200:
+                        flash(f"{video_id} is not valid : video_resp={video_resp.status_code} , meta_resp={meta_resp.status_code} , thumbnail_resp={thumbnail_resp.status_code}")
+                        print(f"{video_id} is not valid : video_resp={video_resp.status_code} , meta_resp={meta_resp.status_code} , thumbnail_resp={thumbnail_resp.status_code}")
+                    else:
+                        add_video(video_id, session["user"]) # Optimisable : faire une requete pour toute les vidéos au lieu de faire une requete par video
+                update_channel_url(new_channel_url, session["user"])
+                print(new_channel_url, channel_info_resp.json(), type(channel_info_resp.json()))
+            else:
+                print(f"channel_info_resp.status_code == {channel_info_resp.status_code}")
+                flash(f"channel_info_resp.status_code == {channel_info_resp.status_code}")
+        return render_template("update_channel.html")
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)

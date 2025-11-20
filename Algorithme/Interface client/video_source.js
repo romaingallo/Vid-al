@@ -7,7 +7,7 @@ if (!videoElement) throw new Error('Element #videoElement introuvable');
 
 if (videoId !== '') {
     const sourceElement = document.createElement('source');
-    sourceElement.src = `http://localhost:5002/video/${videoId}`;
+    sourceElement.src = `${hostURLSource}/video/${videoId}`;
     sourceElement.type = 'video/mp4';
     videoElement.appendChild(sourceElement);
 } else {
@@ -24,7 +24,7 @@ if (!descriptionElement) throw new Error('Element #descriptionElement introuvabl
 
 async function loadMetadataFromServer() {
     try {
-        const res = await fetch(`http://localhost:5002/meta/${videoId}`); // changer l'URL si besoin
+        const res = await fetch(`${hostURLSource}/meta/${videoId}`); // changer l'URL si besoin
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json(); // attendre un tableau d'objets vidéo
         titleElement.textContent = data.title;
