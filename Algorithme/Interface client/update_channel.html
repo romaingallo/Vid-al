@@ -11,4 +11,15 @@
     <input type="text" name="newchannelurl"><br>
     <input type="submit" value="Update">
 </form>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class=flashes>
+        {% for message in messages %}
+            <span>{{ message }}</span>
+        {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
 {% endblock %}

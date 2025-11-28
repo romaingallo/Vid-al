@@ -47,7 +47,8 @@ def login():
             session.permanent = True
             return redirect(url_for('home'))
         else :
-            return redirect(url_for('login', alert = "Invalid password or username."))
+            flash("Invalid password or username.")
+            return redirect(url_for('login'))
     else : 
         if "user" in session:
             return redirect(url_for('visit_channel', channel_name=session["user"]))
@@ -58,13 +59,15 @@ def register():
     if request.method == "POST":
         username_input, password_input = request.form["usrname"], request.form["psswrd"]
         if len(username_input) < 1 or len(password_input) < 6 :
-            return redirect(url_for('register', alert = "Invalid entry : the username should not be empty, and the password should be at least 6 characters."))
+            flash("Invalid entry : the username should not be empty, and the password should be at least 6 characters.")
+            return redirect(url_for('register'))
         elif len(get_user_by_name(username_input)) > 0 :
-            return redirect(url_for('register', alert = "Username already taken."))
+            flash("Username already taken.")
+            return redirect(url_for('register'))
         else : # adding user + session
             add_new_user(username_input, password_input)
-            print("new user created")
-            return redirect(url_for('login', alert = "User created, you can now log in."))
+            flash("User created, you can now log in.")
+            return redirect(url_for('login'))
             # session["user"] = request.form["usrname"]
             # session.permanent = True
         return redirect(url_for('register', alert = "An unknown error occurred."))
@@ -228,28 +231,30 @@ def update_channel():
     if "user" in session: 
         if request.method == 'POST':
             new_channel_url = request.form["newchannelurl"]
-            # to do : vérif user input
+            # to do : vérif user input ( != vide, ... ?)
             channel_info_resp = req.get(f"{new_channel_url}/channelinfo", timeout=5)
             if channel_info_resp.status_code == 200:
                 resp_dict = channel_info_resp.json()
-                if resp_dict["channel_username"] != session["user"]:
-                    flash("You are not logged in with the right account : your server does not return your username.")
-                    print("You are not logged in with the right account : your server does not return your username.")
-                    return render_template("update_channel.html")
-                for video_id in resp_dict["video_list"]:
+                is_user_an_author = False
+                for video_id in resp_dict:
+                    if resp_dict[video_id]["author"] != session["user"]:
+                        continue
+                    is_user_an_author = True
                     video_resp     = req.get(f"{new_channel_url}/video/{video_id}", timeout=5)
                     meta_resp      = req.get(f"{new_channel_url}/meta/{video_id}", timeout=5)
                     thumbnail_resp = req.get(f"{new_channel_url}/thumbnail/{video_id}", timeout=5)
                     # print(video_id, video_resp.status_code, meta_resp.status_code, thumbnail_resp.status_code)
                     if video_resp.status_code != 200 or meta_resp.status_code != 200 or thumbnail_resp.status_code != 200:
                         flash(f"{video_id} is not valid : video_resp={video_resp.status_code} , meta_resp={meta_resp.status_code} , thumbnail_resp={thumbnail_resp.status_code}")
-                        print(f"{video_id} is not valid : video_resp={video_resp.status_code} , meta_resp={meta_resp.status_code} , thumbnail_resp={thumbnail_resp.status_code}")
                     else:
                         add_video(video_id, session["user"]) # Optimisable : faire une requete pour toute les vidéos au lieu de faire une requete par video
-                update_channel_url(new_channel_url, session["user"])
-                print(new_channel_url, channel_info_resp.json(), type(channel_info_resp.json()))
+                if is_user_an_author :
+                    update_channel_url(new_channel_url, session["user"])
+                    flash(f"Update on {new_channel_url} successful !")
+                else :
+                    flash("You are not logged in with the right account : your server does not return your username.")
+                    return render_template("update_channel.html")
             else:
-                print(f"channel_info_resp.status_code == {channel_info_resp.status_code}")
                 flash(f"channel_info_resp.status_code == {channel_info_resp.status_code}")
         return render_template("update_channel.html")
     return redirect(url_for('login'))

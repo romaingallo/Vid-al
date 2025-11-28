@@ -1,6 +1,8 @@
 from flask import Flask, Response, send_file, jsonify
 from flask_cors import CORS
 import os
+from utils import *
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -46,18 +48,21 @@ def meta_video(video_id):
 
 @app.route('/channelinfo')
 def channelinfo():
-    info_path = os.path.join(current_dir, 'channel_info.json')
+
+    meta_dir = os.path.join(current_dir, 'meta')
+    videos_info = get_all_json(meta_dir)
+    videos_info = json.dumps(videos_info)
+    print(videos_info)
+    if videos_info == []:
+        return "No metadata found (json in meta file)", 404
     
-    # Vérifier si le fichier existe
-    if not os.path.exists(info_path):
-        return "channel_info.json non trouvée", 404
-        
-    # Envoyer le fichier 
-    return send_file(
-        info_path,
-        mimetype='application/json',
-        as_attachment=False
-    )
+    return Response(videos_info, mimetype='application/json')
+    
+    # return send_file(
+    #     info_path,
+    #     mimetype='application/json',
+    #     as_attachment=False
+    # )
 
 @app.route('/thumbnail/<video_id>')
 def thumbnail_video(video_id):

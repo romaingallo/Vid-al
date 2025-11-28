@@ -16,6 +16,16 @@
 
     <div class="textinforegister">Never logged in ? <a href="register">Register</a> first !</div>
 
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class=flashes>
+            {% for message in messages %}
+                <span>{{ message }}</span>
+            {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <script src="alert.js"></script>
 {% endblock %}
 

@@ -66,9 +66,9 @@ def get_user_by_name(username):
             ;""",[username])
     result = cur.fetchall()
     close_connection(cur, conn)
-
+    print(result)
     if len(result) > 0 : 
-        for i in range(result) :
+        for i in range(len(result)) :
             result[i] = result[i][0]
 
     return result
