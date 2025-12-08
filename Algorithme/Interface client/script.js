@@ -3,29 +3,53 @@
 const gridcontent = document.getElementById('gridcontent');
 if (!gridcontent) throw new Error('Element #gridcontent introuvable');
 
+let isLoading = false;
+let endReached = false;
+let observer;
+
 // const params = new URLSearchParams(window.location.search);
 // const channelId = params.get('channel');
 
 async function loadFromServer() {
+    if (isLoading || endReached) return;
+    isLoading = true;
     try {
-        let url = '/api/videos';
-        if (typeof channel_name !== 'undefined') {
-            url = `/api/channel/${channel_name}`;
+        const rootMarginPx = 400;
+        while (true) {
+            let url = '/api/videos';
+            if (typeof channel_name !== 'undefined') {
+                url = `/api/channel/${channel_name}`;
+            }
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json(); // attendre un tableau d'objets vidéo
+
+            if (!Array.isArray(data) || data.length === 0) {
+                // plus de contenu à charger -> arrêter l'observer
+                endReached = true;
+                if (observer) observer.disconnect();
+                break;
+            }
+
+            for (const [i, v] of data.entries()) {
+                const card = await createCard(i + 1, v);
+                grid.appendChild(card);
+            }
+            // si le sentinel n'existe pas encore, sortir (ex: premier chargement avant création)
+            if (typeof sentinel === 'undefined' || !sentinel) break;
+
+            // si le sentinel est toujours dans la zone de préchargement, boucler et charger une autre page
+            const rect = sentinel.getBoundingClientRect();
+            const viewportBottom = window.innerHeight + rootMarginPx;
+            if (rect.top > viewportBottom) break;
+
+            // sinon la boucle continue et on refait une requête
+            if (endReached) break;
         }
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json(); // attendre un tableau d'objets vidéo
-        // data.forEach((v, i) => {
-        //     const card = createCard(i + 1, v);
-        //     grid.appendChild(card);
-        // });
-        for (const [i, v] of data.entries()) {
-            const card = await createCard(i + 1, v);
-            grid.appendChild(card);
-        }
-        return data;
     } catch (err) {
         console.error('Échec de chargement des vidéos:', err);
+    } finally {
+        isLoading = false;
     }
 }
 
@@ -71,10 +95,7 @@ grid.className = 'video-grid';
 gridcontent.appendChild(grid);
 
 // Créer N cartes d'exemple
-const N = 6;
-for (let i = 1; i <= N; i++) {
-    loadFromServer()
-}
+loadFromServer()
 
 
 // sentinel pour déclencher le chargement quand on arrive en bas
@@ -84,11 +105,9 @@ sentinel.style.height = '1px';
 gridcontent.appendChild(sentinel);
 
 // IntersectionObserver pour charger quand le sentinel est visible
-const observer = new IntersectionObserver((entries) => {
+observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
-        for (let i = 1; i <= N; i++) {
-            loadFromServer()
-        }
+        loadFromServer()
     }
 }, {
     root: null,
