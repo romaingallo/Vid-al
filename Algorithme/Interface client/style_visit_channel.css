@@ -1,5 +1,5 @@
 /* button-4 : https://getcssscan.com/css-buttons-examples */
-.logoutbutton {
+.githubbutton {
   appearance: none;
   background-color: #FAFBFC;
   border: 1px solid rgba(27, 31, 35, 0.15);
@@ -25,34 +25,34 @@
   word-wrap: break-word;
 }
 
-.logoutbutton:hover {
+.githubbutton:hover {
   background-color: #F3F4F6;
   text-decoration: none;
   transition-duration: 0.1s;
 }
 
-.logoutbutton:disabled {
+.githubbutton:disabled {
   background-color: #FAFBFC;
   border-color: rgba(27, 31, 35, 0.15);
   color: #959DA5;
   cursor: default;
 }
 
-.logoutbutton:active {
+.githubbutton:active {
   background-color: #EDEFF2;
   box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
   transition: none 0s;
 }
 
-.logoutbutton:focus {
+.githubbutton:focus {
   outline: 1px transparent;
 }
 
-.logoutbutton:before {
+.githubbutton:before {
   display: none;
 }
 
-.logoutbutton:-webkit-details-marker {
+.githubbutton:-webkit-details-marker {
   display: none;
 }
 

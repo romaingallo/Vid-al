@@ -11,8 +11,9 @@
         <h1>{{name}}</h1>
         <img class="pfpvisit" src="/pfp_of/{{name}}" alt="${{name}} pfp">
         {% if own_profile %}
-        <button onclick="window.location.href='/logout';" class="logoutbutton">Log out</button>
-        <button onclick="window.location.href='/upload_pfp';" class="uploadpfppbutton">Update profile picture (png only)</button>
+        <button onclick="window.location.href='/logout';" class="githubbutton">Log out</button>
+        <button onclick="window.location.href='/upload_pfp';" class="githubbutton">Update profile picture (png only)</button>
+        <button onclick="window.location.href='/update_channel';" class="githubbutton">Update all video references</button>
         {% endif %}
         <hr/>
     </div>
