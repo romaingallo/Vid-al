@@ -91,6 +91,7 @@ def videos(offset):
     like_scale = 1
     limit = 6
     data = get_videos(like_scale, limit, offset)
+    print(data)
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>')
@@ -196,15 +197,18 @@ def visit_channel(channel_name):
 def watch(video_id):
     _, host_url, _ = get_author_info_from_video(video_id)
     reaction_result = get_reactions_on_video(video_id)
+    nb_views = get_video_views(video_id)
+    if nb_views == False : nb_views = 0
     green_state = 'green0'
     red_state   = 'red0'
     if "user" in session: 
+        add_view(session["user"], video_id)
         like_state = get_user_has_liked_for_json(video_id, session["user"])
         if like_state == 'like': green_state = 'green100'
         elif like_state == 'dislike' : red_state = 'red100'
     return render_template("watch.html", 
                            videoId = video_id, 
-                           nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], 
+                           nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], nb_views = nb_views,
                            green_state = green_state, red_state = red_state,
                            hostURL = host_url)
 

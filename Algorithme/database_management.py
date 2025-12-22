@@ -100,26 +100,27 @@ conn.autocommit = True
 #     "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
 #     "GROUP BY v.videourl, u.username, channel_url;
 
-like_scale = 1
-limit = 12
-offset = 12
-cur.execute("SELECT v.videourl,"\
-                "u.username, "\
-                "COUNT(*) FILTER (WHERE not l.is_dislike) as nb_likes, "\
-                "COUNT(DISTINCT views.videourl) as nb_views, "\
-                "u.channel_url as channel_url, " \
-                "COUNT(*) FILTER (WHERE l.is_dislike) as nb_dislikes, "\
-                "(1 * CBRT( (COUNT(*) FILTER (WHERE not l.is_dislike) * 1.0) - (COUNT(*) FILTER (WHERE l.is_dislike) * 1.0) ) ) " \
-        "FROM videos v " \
-        "JOIN users u ON v.user_pk = u.user_pk " \
-        "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
-        "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
-        "GROUP BY v.videourl, u.username, u.channel_url " \
-        "ORDER BY ( " \
-        "%s * CBRT( (COUNT(*) FILTER (WHERE not l.is_dislike) * 1.0) - (COUNT(*) FILTER (WHERE l.is_dislike) * 1.0) ) " \
-        ") DESC " \
-        "LIMIT %s OFFSET %s;"
-        ,[like_scale, limit, offset])
+# Get videos :
+# like_scale = 1
+# limit = 12
+# offset = 12
+# cur.execute("SELECT v.videourl,"\
+#                 "u.username, "\
+#                 "COUNT(*) FILTER (WHERE not l.is_dislike) as nb_likes, "\
+#                 "COUNT(DISTINCT views.videourl) as nb_views, "\
+#                 "u.channel_url as channel_url, " \
+#                 "COUNT(*) FILTER (WHERE l.is_dislike) as nb_dislikes, "\
+#                 "(1 * CBRT( (COUNT(*) FILTER (WHERE not l.is_dislike) * 1.0) - (COUNT(*) FILTER (WHERE l.is_dislike) * 1.0) ) ) " \
+#         "FROM videos v " \
+#         "JOIN users u ON v.user_pk = u.user_pk " \
+#         "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
+#         "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
+#         "GROUP BY v.videourl, u.username, u.channel_url " \
+#         "ORDER BY ( " \
+#         "%s * CBRT( (COUNT(*) FILTER (WHERE not l.is_dislike) * 1.0) - (COUNT(*) FILTER (WHERE l.is_dislike) * 1.0) ) " \
+#         ") DESC " \
+#         "LIMIT %s OFFSET %s;"
+#         ,[like_scale, limit, offset])
 
 # # Nb likes :
 # cur.execute("SELECT v.videourl,"\
@@ -129,12 +130,33 @@ cur.execute("SELECT v.videourl,"\
 #         "GROUP BY v.videourl;"
 #         ,[])
 
-# cur.execute("""SELECT id, titre, likes, dislikes, vues, commentaires, tags
-# FROM videos
-# WHERE [vos conditions de filtre, par exemple : tags LIKE '%musique%']
-# ORDER BY (likes - dislikes) * log(vues + 1) DESC  -- Exemple de score personnalisé
-# LIMIT 10 OFFSET 0;  -- Première page : 10 résultats
-# """, ["video_id_aaaa", "7"])
+
+# # Get get_user_has_view(user, video_id) :
+# cur.execute("""SELECT users.username
+#             FROM has_been_viewed_by
+#             LEFT JOIN users ON has_been_viewed_by.user_pk = users.user_pk
+#             WHERE users.username = %s AND has_been_viewed_by.videourl = %s
+#         ;""", ['Romain', 'video_test_01'])
+
+# # Add a view
+# cur.execute("""INSERT INTO has_been_viewed_by (videourl,user_pk)
+# 	VALUES (%s,%s)
+#         ;""", ["Bird",10])
+
+# Number of views :
+# cur.execute("SELECT v.videourl,"\
+#         "COUNT(has_been_viewed_by) as nb_views "\
+#         "FROM videos v " \
+#         "LEFT JOIN has_been_viewed_by ON v.videourl = has_been_viewed_by.videourl " \
+#         "GROUP BY v.videourl;"
+#         ,[])
+cur.execute("SELECT v.videourl,"\
+        "COUNT(has_been_viewed_by) as nb_views "\
+        "FROM videos v " \
+        "LEFT JOIN has_been_viewed_by ON v.videourl = has_been_viewed_by.videourl " \
+        "WHERE v.videourl = %s " \
+        "GROUP BY v.videourl;"
+        ,['video_test_01'])
 
 
 

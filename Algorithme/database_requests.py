@@ -39,22 +39,32 @@ def close_connection(cur, conn):
 
 def get_videos(like_scale, limit, offset):
     cur, conn = connection()
-    cur.execute("SELECT v.videourl,"\
-                "u.username, "\
-                "COUNT(*) FILTER (WHERE not l.is_dislike) as nb_likes, "\
-                "COUNT(DISTINCT views.videourl) as nb_views, "\
-                "u.channel_url as channel_url, " \
-                "COUNT(*) FILTER (WHERE l.is_dislike) as nb_dislikes "\
-        "FROM videos v " \
-        "JOIN users u ON v.user_pk = u.user_pk " \
-        "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
-        "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
-        "GROUP BY v.videourl, u.username, u.channel_url " \
-        "ORDER BY ( " \
-        "%s * CBRT( (COUNT(*) FILTER (WHERE not l.is_dislike) * 1.0) - (COUNT(*) FILTER (WHERE l.is_dislike) * 1.0) ) " \
-        ") DESC " \
-        "LIMIT %s OFFSET %s;"
-        ,[like_scale, limit, offset])
+    cur.execute("""
+        SELECT v.videourl,
+               u.username,
+               COALESCE(lc.nb_likes, 0)    AS nb_likes,
+               COALESCE(vc.nb_views, 0)    AS nb_views,
+               u.channel_url               AS channel_url,
+               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes
+        FROM videos v
+        JOIN users u ON v.user_pk = u.user_pk
+        LEFT JOIN (
+            SELECT videourl,
+                   COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+                   COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+            FROM has_been_liked_by
+            GROUP BY videourl
+        ) lc ON lc.videourl = v.videourl
+        LEFT JOIN (
+            SELECT videourl, COUNT(*) AS nb_views
+            FROM has_been_viewed_by
+            GROUP BY videourl
+        ) vc ON vc.videourl = v.videourl
+        ORDER BY (
+            %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) )
+        ) DESC
+        LIMIT %s OFFSET %s
+        ;""", [like_scale, limit, offset])
     result = cur.fetchall()
     close_connection(cur, conn)
 
@@ -62,19 +72,29 @@ def get_videos(like_scale, limit, offset):
 
 def get_all_videos_from_channel(channel_usename):
     cur, conn = connection()
-    cur.execute("""SELECT 
-                v.videourl, 
-                u.username, 
-                COUNT(DISTINCT l.videourl) as nb_likes, 
-                COUNT(DISTINCT views.videourl) as nb_views, 
-                u.channel_url as channel_url 
-            FROM videos v 
-            JOIN users u ON v.user_pk = u.user_pk 
-            LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl 
-            LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl 
-            WHERE u.username = %s
-            GROUP BY v.videourl, u.username, channel_url
-            ;""",[channel_usename])
+    cur.execute("""
+        SELECT v.videourl,
+               u.username,
+               COALESCE(lc.nb_likes, 0)    AS nb_likes,
+               COALESCE(vc.nb_views, 0)    AS nb_views,
+               u.channel_url               AS channel_url,
+               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes
+        FROM videos v
+        JOIN users u ON v.user_pk = u.user_pk
+        LEFT JOIN (
+            SELECT videourl,
+                   COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+                   COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+            FROM has_been_liked_by
+            GROUP BY videourl
+        ) lc ON lc.videourl = v.videourl
+        LEFT JOIN (
+            SELECT videourl, COUNT(*) AS nb_views
+            FROM has_been_viewed_by
+            GROUP BY videourl
+        ) vc ON vc.videourl = v.videourl
+        WHERE u.username = %s
+        ;""", [channel_usename])
     result = cur.fetchall()
     close_connection(cur, conn)
 
@@ -157,7 +177,7 @@ def get_user_pk_from_username(username):
         ;""", [username])
     result = cur.fetchall()
     close_connection(cur, conn)
-
+    if len(result) == 0 : return False
     return result[0][0]
 
 def update_like(video_id, username, is_dislike):
@@ -262,5 +282,42 @@ def get_host_url_from_username(username):
     close_connection(cur, conn)
     return result[0]
 
+def get_has_used_viewed(username, video_id): # Return True if the user has watched the video
+    cur, conn = connection()
+    cur.execute("""SELECT users.username
+            FROM has_been_viewed_by
+            LEFT JOIN users ON has_been_viewed_by.user_pk = users.user_pk
+            WHERE users.username = %s AND has_been_viewed_by.videourl = %s
+        ;""", [username, video_id])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    return len(result)>0
+
+def add_view(username, video_id):
+    if get_has_used_viewed(username, video_id):
+        return False, "Has already seen"
+    user_pk = get_user_pk_from_username(username)
+    if user_pk == False : return False, "Username not found"
+    cur, conn = connection()
+    cur.execute("""INSERT INTO has_been_viewed_by (videourl,user_pk)
+        VALUES (%s,%s)
+        ;""", [video_id,user_pk])
+    close_connection(cur, conn)
+    return True, "View added successfully"
+
+def get_video_views(video_id):
+    cur, conn = connection()
+    cur.execute("SELECT v.videourl,"\
+        "COUNT(has_been_viewed_by) as nb_views "\
+        "FROM videos v " \
+        "LEFT JOIN has_been_viewed_by ON v.videourl = has_been_viewed_by.videourl " \
+        "WHERE v.videourl = %s " \
+        "GROUP BY v.videourl;"
+        ,[video_id])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    if len(result) == 0 : return False
+    return result[0][1]
+
 if __name__ == "__main__" :
-    print(get_host_url_from_username("Quentin"))
+    print(get_video_views("video_test_01"))
