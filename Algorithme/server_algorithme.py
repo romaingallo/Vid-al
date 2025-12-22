@@ -81,9 +81,16 @@ def logout():
     if "user" in session: session.pop("user", None)
     return redirect(url_for('home'))
 
-@app.route('/api/videos')
-def videos():
-    data = get_all_videos()
+# @app.route('/api/videos')
+# def videos():
+#     data = get_all_videos()
+#     return jsonify(data)
+
+@app.route('/api/videos/<offset>')
+def videos(offset):
+    like_scale = 1
+    limit = 6
+    data = get_videos(like_scale, limit, offset)
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>')

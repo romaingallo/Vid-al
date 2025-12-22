@@ -24,14 +24,37 @@ def close_connection(cur, conn):
     conn.close()
 
 
-def get_all_videos():
+# def get_all_videos():
+#     cur, conn = connection()
+#     cur.execute("SELECT v.videourl, u.username, COUNT(DISTINCT l.videourl) as nb_likes, COUNT(DISTINCT views.videourl) as nb_views, u.channel_url as channel_url " \
+#     "FROM videos v " \
+#     "JOIN users u ON v.user_pk = u.user_pk " \
+#     "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
+#     "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
+#     "GROUP BY v.videourl, u.username, channel_url;",[])
+#     result = cur.fetchall()
+#     close_connection(cur, conn)
+
+#     return convert_sql_output_to_list_for_card(result)
+
+def get_videos(like_scale, limit, offset):
     cur, conn = connection()
-    cur.execute("SELECT v.videourl, u.username, COUNT(DISTINCT l.videourl) as nb_likes, COUNT(DISTINCT views.videourl) as nb_views, u.channel_url as channel_url " \
-    "FROM videos v " \
-    "JOIN users u ON v.user_pk = u.user_pk " \
-    "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
-    "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
-    "GROUP BY v.videourl, u.username, channel_url;",[])
+    cur.execute("SELECT v.videourl,"\
+                "u.username, "\
+                "COUNT(*) FILTER (WHERE not l.is_dislike) as nb_likes, "\
+                "COUNT(DISTINCT views.videourl) as nb_views, "\
+                "u.channel_url as channel_url, " \
+                "COUNT(*) FILTER (WHERE l.is_dislike) as nb_dislikes "\
+        "FROM videos v " \
+        "JOIN users u ON v.user_pk = u.user_pk " \
+        "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
+        "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
+        "GROUP BY v.videourl, u.username, u.channel_url " \
+        "ORDER BY ( " \
+        "%s * CBRT( (COUNT(*) FILTER (WHERE not l.is_dislike) * 1.0) - (COUNT(*) FILTER (WHERE l.is_dislike) * 1.0) ) " \
+        ") DESC " \
+        "LIMIT %s OFFSET %s;"
+        ,[like_scale, limit, offset])
     result = cur.fetchall()
     close_connection(cur, conn)
 

@@ -5,6 +5,7 @@ if (!gridcontent) throw new Error('Element #gridcontent introuvable');
 
 let isLoading = false;
 let endReached = false;
+let offset = 0;
 let observer;
 
 // const params = new URLSearchParams(window.location.search);
@@ -16,9 +17,13 @@ async function loadFromServer() {
     try {
         const rootMarginPx = 400;
         while (true) {
-            let url = '/api/videos';
+            // let url = '/api/videos';
+            let url = '/api/videos/' + offset;
             if (typeof channel_name !== 'undefined') {
                 url = `/api/channel/${channel_name}`;
+            }
+            else {
+                offset += 6;
             }
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
