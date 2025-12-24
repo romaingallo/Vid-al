@@ -11,11 +11,11 @@
         <div class="videopanel">
             <video id="video" controls autoplay>
             </video>
-            <a class="avatar" aria-hidden="true" href="/watch.html"></a>
             <div class="info">
                 <div><a id="title" class="title" href="/watch.html">Titre de la vidéo exemple #000</a></div>
                 <div>
-                    <a id="sub" class="sub" href="/watch.html">Chaîne • {{nb_views}} vues • 000 jours</a>
+                    <a href="/visit_channel/{{name}}"> <img class="pfpwatch" src="/pfp_of/{{name}}" alt="${{name}} pfp"></a>
+                    <a id="sub" class="subtitle" href="/watch.html">{{name}} • {{nb_views}} vues • 000 jours</a>
                     <div class="actions">
                         <button id="btn-like" class="btn {{green_state}}" aria-pressed="false">
                             Like <span id="like-count">{{nb_likes}}</span>

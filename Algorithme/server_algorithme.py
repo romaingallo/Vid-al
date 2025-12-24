@@ -41,7 +41,6 @@ def home():
 @app.route('/login', methods=["POST", "GET"])
 def login():
     if request.method == "POST":
-        # print(request.form["usrname"] + " - " + request.form["psswrd"])
         if authentification(request.form["usrname"], request.form["psswrd"]) :
             session["user"] = request.form["usrname"]
             session.permanent = True
@@ -81,18 +80,12 @@ def logout():
     if "user" in session: session.pop("user", None)
     return redirect(url_for('home'))
 
-# @app.route('/api/videos')
-# def videos():
-#     data = get_all_videos()
-#     return jsonify(data)
-
 @app.route('/api/videos/<offset>')
 def videos(offset):
     like_scale = 1
     limit = 6
     view_scale = 0.1
     data = get_videos(like_scale, view_scale, limit, offset)
-    print(data)
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>')
@@ -196,7 +189,7 @@ def visit_channel(channel_name):
 
 @app.route('/watch/<video_id>')
 def watch(video_id):
-    _, host_url, _ = get_author_info_from_video(video_id)
+    author_username, host_url, _ = get_author_info_from_video(video_id)
     reaction_result = get_reactions_on_video(video_id)
     nb_views = get_video_views(video_id)
     if nb_views == False : nb_views = 0
@@ -210,6 +203,7 @@ def watch(video_id):
     return render_template("watch.html", 
                            videoId = video_id, 
                            nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], nb_views = nb_views,
+                           name = author_username,
                            green_state = green_state, red_state = red_state,
                            hostURL = host_url)
 
@@ -255,7 +249,6 @@ def update_channel():
                     video_resp     = req.get(f"{new_channel_url}/video/{video_id}", timeout=5)
                     meta_resp      = req.get(f"{new_channel_url}/meta/{video_id}", timeout=5)
                     thumbnail_resp = req.get(f"{new_channel_url}/thumbnail/{video_id}", timeout=5)
-                    # print(video_id, video_resp.status_code, meta_resp.status_code, thumbnail_resp.status_code)
                     if video_resp.status_code != 200 or meta_resp.status_code != 200 or thumbnail_resp.status_code != 200:
                         flash(f"{video_id} is not valid : video_resp={video_resp.status_code} , meta_resp={meta_resp.status_code} , thumbnail_resp={thumbnail_resp.status_code}")
                     else:

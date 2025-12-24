@@ -157,14 +157,6 @@
     display: block;
 }
 
-.videopanel .avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: #ddd;
-    flex-shrink: 0;
-}
-
 .videopanel .info {
     flex: 1;
 }
@@ -174,11 +166,6 @@
     margin: 0 0 6px 0;
     color: #111;
     line-height: 1.2;
-    text-decoration: none;
-}
-.videopanel .sub {
-    font-size: 20px;
-    color: #666;
     text-decoration: none;
 }
 
