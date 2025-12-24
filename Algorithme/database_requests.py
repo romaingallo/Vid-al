@@ -37,7 +37,7 @@ def close_connection(cur, conn):
 
 #     return convert_sql_output_to_list_for_card(result)
 
-def get_videos(like_scale, limit, offset):
+def get_videos(like_scale, view_scale, limit, offset):
     cur, conn = connection()
     cur.execute("""
         SELECT v.videourl,
@@ -61,10 +61,10 @@ def get_videos(like_scale, limit, offset):
             GROUP BY videourl
         ) vc ON vc.videourl = v.videourl
         ORDER BY (
-            %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) )
+            %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) )
         ) DESC
         LIMIT %s OFFSET %s
-        ;""", [like_scale, limit, offset])
+        ;""", [like_scale, view_scale, limit, offset])
     result = cur.fetchall()
     close_connection(cur, conn)
 

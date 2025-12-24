@@ -90,7 +90,8 @@ def logout():
 def videos(offset):
     like_scale = 1
     limit = 6
-    data = get_videos(like_scale, limit, offset)
+    view_scale = 0.1
+    data = get_videos(like_scale, view_scale, limit, offset)
     print(data)
     return jsonify(data)
 
