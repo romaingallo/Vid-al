@@ -120,6 +120,19 @@ def react(video_id):
         'user_reaction': None  # 'like' | 'dislike' | None
     })
 
+@app.route('/api/deletecomment', methods=['POST'])
+def deletecomment():
+    if request.method == 'POST':
+        if "user" in session: 
+            comment_id = request.form.get('comment_id')
+            if is_comment_from(comment_id, session["user"]):
+                remove_comment_from_pk(comment_id)
+                return '', 200
+            return jsonify({"error": 'User Unauthorized'}), 401
+        else:
+            return jsonify({"error": 'User Unauthorized'}), 401
+    return '', 400
+
 @app.route('/pfp')
 def pfp():
     if "user" in session:
@@ -187,17 +200,27 @@ def visit_channel(channel_name):
     return render_template("visit_channel.html", name=channel_name, own_profile=False, hostURL=host_url)
 
 
-@app.route('/watch/<video_id>')
+@app.route('/watch/<video_id>', methods=['GET', 'POST'])
 def watch(video_id):
+    if request.method == 'POST':
+        # print(request.form["cmmnt"])
+        if "user" in session:
+            add_comment_on_video(video_id, session["user"], request.form["cmmnt"])
+        else:
+            print("Error : tried to post comment without being connected")
+        
     author_username, host_url, _ = get_author_info_from_video(video_id)
     reaction_result = get_reactions_on_video(video_id)
     nb_views = get_video_views(video_id)
+    comments = get_comments_of_video(video_id)
     if nb_views == False : nb_views = 0
     green_state = 'green0'
     red_state   = 'red0'
+    username = ''
     if "user" in session: 
-        add_view(session["user"], video_id)
-        like_state = get_user_has_liked_for_json(video_id, session["user"])
+        username = session["user"]
+        add_view(username, video_id)
+        like_state = get_user_has_liked_for_json(video_id, username)
         if like_state == 'like': green_state = 'green100'
         elif like_state == 'dislike' : red_state = 'red100'
     return render_template("watch.html", 
@@ -205,7 +228,8 @@ def watch(video_id):
                            nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], nb_views = nb_views,
                            name = author_username,
                            green_state = green_state, red_state = red_state,
-                           hostURL = host_url)
+                           hostURL = host_url,
+                           comments = comments, lencomments = len(comments), connected = "user" in session, username = username)
 
 
 @app.route('/upload_pfp', methods=['GET', 'POST'])
@@ -265,4 +289,5 @@ def update_channel():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    # app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

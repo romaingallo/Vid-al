@@ -12,10 +12,10 @@
             <video id="video" controls autoplay>
             </video>
             <div class="info">
-                <div><a id="title" class="title" href="/watch.html">Titre de la vidéo exemple #000</a></div>
+                <div><a id="title" class="title">Titre de la vidéo exemple #000</a></div>
                 <div>
                     <a href="/visit_channel/{{name}}"> <img class="pfpwatch" src="/pfp_of/{{name}}" alt="${{name}} pfp"></a>
-                    <a id="sub" class="subtitle" href="/watch.html">{{name}} • {{nb_views}} vues • 000 jours</a>
+                    <a id="sub" class="subtitle" href="/visit_channel/{{name}}">{{name}} • {{nb_views}} vues • 000 jours</a>
                     <div class="actions">
                         <button id="btn-like" class="btn {{green_state}}" aria-pressed="false">
                             Like <span id="like-count">{{nb_likes}}</span>
@@ -27,7 +27,36 @@
                 </div>
             </div>
             <div id="description">Description</div>
-            <div id="comments">Commentaires</div>
+            {% if connected %}
+            <form action="#" method="post" class="form">
+                <label for="cmmnt" class="commenttext">Write a comment :</label><br>
+                <input type="text" id="cmmnt" name="cmmnt" class="boxinput"><br>
+                <input type="submit" value="Send" class="submitcommentbutton">
+            </form>
+            {% else %}
+            <div>You need to be logged in to write a comment.</div>
+            {% endif %}
+            <div id="comments">
+                {%for i in range(0, lencomments)%}
+
+                    <!-- <li>{{comments[i]}}</li>
+                    <li>{{comments[i][1]}}</li> -->
+                    <div data-id="{{comments[i][3]}}">
+                        <div class="authorpfp"><a href="/visit_channel/{{comments[i][0]}}"> <img class="pfpwatch" src="/pfp_of/{{comments[i][0]}}" alt="${{comments[i][0]}} pfp"></a></div>
+                        <div class="comment-text">
+                            <div class="commentauthor">
+                                {{comments[i][0]}}
+                                <span class="commentdate">{{comments[i][2]}}</span>
+                            </div>
+                            <div class="commentcontent">{{comments[i][1]}}</div>
+                        </div>
+                        {% if comments[i][0] == username %}
+                        <button class="deletecommentbutton" data-comment-id="{{comments[i][3]}}">Delete comment</button>
+                        {% endif %}
+                    </div>
+                {%endfor%}
+                
+            </div>
         </div>
 
         <div id="gridcontent" class="gridcontent">
@@ -43,4 +72,5 @@
     <script src="/video_source.js"></script>
     <script src="/script.js"></script>
     <script src="/watch_reaction.js"></script>
+    <script src="/deletecommentbutton.js"></script>
 {% endblock %}

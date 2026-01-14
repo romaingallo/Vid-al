@@ -319,5 +319,64 @@ def get_video_views(video_id):
     if len(result) == 0 : return False
     return result[0][1]
 
+def get_comments_of_video(video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT u.username, c.content, c.date, c.comment_pk
+                FROM comments c
+                LEFT JOIN users u ON u.user_pk = c.user_pk
+                WHERE c.videourl = %s
+            ;""", [video_id])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    if len(result) == 0 : return []
+    return [list(tuple) for tuple in result]
+
+def add_comment_on_video(video_id, username, comment_content):
+    user_pk = get_user_pk_from_username(username)
+    if user_pk == False : return False, "Username not found"
+    cur, conn = connection()
+    cur.execute("""INSERT INTO comments (videourl, user_pk, content)
+            VALUES (%s, %s, %s)
+            ;""", [video_id, user_pk, comment_content])
+    close_connection(cur, conn)
+    return True, "View added successfully"
+
+def remove_comment_from_pk(comment_pk):
+    try:
+        cur, conn = connection()
+        cur.execute("""DELETE FROM comments
+            WHERE comment_pk = %s 
+            ;""", [comment_pk])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+    
+def update_comment_from_pk(comment_pk, comment_content):
+    try:
+        cur, conn = connection()
+        cur.execute("""UPDATE comments
+                SET content=%s
+                WHERE comment_pk =%s
+                ;""", [comment_content, comment_pk])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
+def is_comment_from(comment_pk, username):
+    cur, conn = connection()
+    cur.execute("""SELECT u.username, c.content, c.date, c.comment_pk
+            FROM comments c
+            LEFT JOIN users u ON u.user_pk = c.user_pk
+            WHERE c.comment_pk = %s AND u.username = %s
+        ;""", [comment_pk, username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    if len(result) == 0 : return False
+    return True
+
 if __name__ == "__main__" :
-    print(get_video_views("video_test_01"))
+    print(get_comments_of_video("Bird"))
+    # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
+    # print(update_comment_from_pk(5, "It must fly so fast !!!"))

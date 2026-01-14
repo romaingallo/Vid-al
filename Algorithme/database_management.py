@@ -100,37 +100,37 @@ conn.autocommit = True
 #     "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
 #     "GROUP BY v.videourl, u.username, channel_url;
 
-# # Get videos :
-like_scale = 1
-limit = 12
-offset = 0
-view_scale = 0.1
-cur.execute("""
-        SELECT v.videourl,
-               u.username,
-               COALESCE(lc.nb_likes, 0)    AS nb_likes,
-               COALESCE(vc.nb_views, 0)    AS nb_views,
-               u.channel_url               AS channel_url,
-               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes
-        FROM videos v
-        JOIN users u ON v.user_pk = u.user_pk
-        LEFT JOIN (
-            SELECT videourl,
-                   COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
-                   COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
-            FROM has_been_liked_by
-            GROUP BY videourl
-        ) lc ON lc.videourl = v.videourl
-        LEFT JOIN (
-            SELECT videourl, COUNT(*) AS nb_views
-            FROM has_been_viewed_by
-            GROUP BY videourl
-        ) vc ON vc.videourl = v.videourl
-        ORDER BY (
-            %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) )
-        ) DESC
-        LIMIT %s OFFSET %s
-        ;""", [like_scale, view_scale, limit, offset])
+# # # Get videos :
+# like_scale = 1
+# limit = 12
+# offset = 0
+# view_scale = 0.1
+# cur.execute("""
+#         SELECT v.videourl,
+#                u.username,
+#                COALESCE(lc.nb_likes, 0)    AS nb_likes,
+#                COALESCE(vc.nb_views, 0)    AS nb_views,
+#                u.channel_url               AS channel_url,
+#                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes
+#         FROM videos v
+#         JOIN users u ON v.user_pk = u.user_pk
+#         LEFT JOIN (
+#             SELECT videourl,
+#                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+#                    COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+#             FROM has_been_liked_by
+#             GROUP BY videourl
+#         ) lc ON lc.videourl = v.videourl
+#         LEFT JOIN (
+#             SELECT videourl, COUNT(*) AS nb_views
+#             FROM has_been_viewed_by
+#             GROUP BY videourl
+#         ) vc ON vc.videourl = v.videourl
+#         ORDER BY (
+#             %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) )
+#         ) DESC
+#         LIMIT %s OFFSET %s
+#         ;""", [like_scale, view_scale, limit, offset])
 
 # # Nb likes :
 # cur.execute("SELECT v.videourl,"\
@@ -169,9 +169,38 @@ cur.execute("""
 #         ,['video_test_01'])
 
 
-res = cur.fetchall()
-for i in res:
-        print(i)
+# res = cur.fetchall()
+# for i in res:
+#         print(i)
+
+# # Commentaires :
+# get
+# cur.execute("""SELECT u.username, c.content, c.date, c.comment_pk
+#             FROM comments c
+#             LEFT JOIN users u ON u.user_pk = c.user_pk
+#             WHERE c.videourl = %s
+#         ;""", ['Bird'])
+# add
+# cur.execute("""INSERT INTO comments (videourl, user_pk, content)
+#         VALUES (%s, %s, %s)
+#         ;""", ["Bird", 1, "Nice video"])
+# remove
+# cur.execute("""DELETE FROM comments
+# 	WHERE comment_pk = %s 
+# 	;""", [3])
+# edit
+# cur.execute("""UPDATE comments
+#         SET content=%s
+#         WHERE comment_pk =%s
+#         ;""", ['AMazing video', 2])
+# get if username
+cur.execute("""SELECT u.username, c.content, c.date, c.comment_pk
+            FROM comments c
+            LEFT JOIN users u ON u.user_pk = c.user_pk
+            WHERE c.comment_pk = %s AND u.username = %s
+        ;""", [6, 'One'])
+
+print(cur.fetchall())
 
 cur.close()
 conn.close()

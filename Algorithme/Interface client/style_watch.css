@@ -130,3 +130,47 @@
     color: #666;
     text-decoration: none;
 }
+
+
+
+/* Comments */
+
+#comments > div {
+    display: flex; /* Active le mode flexbox */
+    align-items: flex-start; /* Aligne les éléments en haut */
+    margin-bottom: 15px; /* Espace entre chaque commentaire */
+    margin-top: 15px;
+}
+
+.authorpfp {
+    margin-right: 12px; /* Espace entre l'image et le texte */
+}
+
+.authorpfp img {
+    width: 40px; /* Taille de l'image de profil */
+    height: 40px;
+    border-radius: 50%; /* Pour un style rond comme YouTube */
+    object-fit: cover; /* Pour que l'image remplisse bien le cercle */
+}
+
+.comment-text {
+    display: flex;
+    flex-direction: column; /* Empile les éléments verticalement */
+}
+
+.commentauthor {
+    font-weight: bold; /* Nom de l'auteur en gras */
+    margin-bottom: 4px; /* Espace entre le nom et le contenu */
+}
+
+.commentcontent {
+    flex: 1; /* Prend tout l'espace restant */
+    word-break: break-word; /* Pour éviter les débordements */
+}
+
+.commentdate {
+    color: #999; /* Gris clair */
+    font-weight: normal; /* Pas en gras */
+    margin-left: 8px; /* Espace entre le nom et la date */
+    font-size: 0.9em; /* Légèrement plus petit que le nom */
+}
