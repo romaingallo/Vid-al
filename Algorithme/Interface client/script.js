@@ -17,14 +17,11 @@ async function loadFromServer() {
     try {
         const rootMarginPx = 400;
         while (true) {
-            // let url = '/api/videos';
             let url = '/api/videos/' + offset;
             if (typeof channel_name !== 'undefined') {
-                url = `/api/channel/${channel_name}`;
+                url = `/api/channel/${channel_name}/` + offset;
             }
-            else {
-                offset += 6;
-            }
+            offset += 6;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json(); // attendre un tableau d'objets vidéo
@@ -73,17 +70,21 @@ async function loadTitleFromHost(videoId, hostURL) {
 const thumbPath = './images/miniatures/miniature0.jpg';
 async function createCard(i, data = null) {
     const url = `/watch/${data?.url ?? ``}`;
-    const title = await loadTitleFromHost(data?.url, data?.hostURL) ?? `Erreur de titre`;
     const channel = data?.channel ?? 'Chaîne';
+    const title = await loadTitleFromHost(data?.url, data?.hostURL) ?? `Erreur de titre`;
     const channelurl = `/visit_channel/${channel}`;
+    const editvideourl = `/edit/${channel}/${data?.url ?? ``}`;
     const views = data?.views ?? `${Math.floor(Math.random()*5+1)}k`;
     const likes = data?.likes ?? `${Math.floor(Math.random()*10)+1} jours`;
     const thumb = `${data?.hostURL}/thumbnail/${data?.url}`;
+    const is_hidden = data?.is_hidden ?? `false`;
+    let is_hidden_class = ``;
+    if (is_hidden){is_hidden_class = " is_hidden"}
 
     const card = document.createElement('article');
         card.className = 'video-card';
         card.innerHTML = `
-            <a class="thumbnaillink" href="${url}"><img class="thumbnail" src="${thumb}" alt="Miniature ${i}"></a>
+            <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}"></a>
             <div class="meta">
                 <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                 <div class="info">
@@ -92,6 +93,22 @@ async function createCard(i, data = null) {
                 </div>
             </div>
         `;
+        if (typeof own_profile !== 'undefined') {
+            console.log(`${own_profile}  - ${typeof own_profile}`);
+            if (own_profile) {
+                card.innerHTML = `
+                    <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}"></a>
+                    <div class="meta">
+                        <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
+                        <div class="info">
+                            <div><a class="title" href="${url}">${title}</a></div>
+                            <div><a class="sub" href="${channelurl}">${channel} • ${views} vues • ${likes} likes</a></div>
+                        </div>
+                        <a class="editlink" href="${editvideourl}"><img class="editicon" src="/images/edit.svg" alt="Edit"></a>
+                    </div>
+                `;
+            }
+        }
     return card;
 }
 

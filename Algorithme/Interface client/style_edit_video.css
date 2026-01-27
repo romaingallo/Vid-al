@@ -1,0 +1,19 @@
+.taglist{
+    list-style-type: none;
+}
+.taglistelement:hover{
+    background-color: #eaeaea;
+}
+
+.editpagecontent{
+    margin-left: 85px;
+}
+
+.infotext{
+    margin-top: 15px;
+    margin-bottom: 30px;
+}
+
+.settingblock{
+    margin-bottom: 30px;
+}

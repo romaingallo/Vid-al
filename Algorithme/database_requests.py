@@ -45,7 +45,8 @@ def get_videos(like_scale, view_scale, limit, offset):
                COALESCE(lc.nb_likes, 0)    AS nb_likes,
                COALESCE(vc.nb_views, 0)    AS nb_views,
                u.channel_url               AS channel_url,
-               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes
+               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
+               v.is_hidden
         FROM videos v
         JOIN users u ON v.user_pk = u.user_pk
         LEFT JOIN (
@@ -60,6 +61,7 @@ def get_videos(like_scale, view_scale, limit, offset):
             FROM has_been_viewed_by
             GROUP BY videourl
         ) vc ON vc.videourl = v.videourl
+        WHERE v.is_hidden = False
         ORDER BY (
             %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) )
         ) DESC
@@ -70,7 +72,7 @@ def get_videos(like_scale, view_scale, limit, offset):
 
     return convert_sql_output_to_list_for_card(result)
 
-def get_all_videos_from_channel(channel_usename):
+def get_all_videos_from_channel(channel_usename, limit, offset):
     cur, conn = connection()
     cur.execute("""
         SELECT v.videourl,
@@ -78,7 +80,8 @@ def get_all_videos_from_channel(channel_usename):
                COALESCE(lc.nb_likes, 0)    AS nb_likes,
                COALESCE(vc.nb_views, 0)    AS nb_views,
                u.channel_url               AS channel_url,
-               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes
+               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
+               v.is_hidden
         FROM videos v
         JOIN users u ON v.user_pk = u.user_pk
         LEFT JOIN (
@@ -94,7 +97,8 @@ def get_all_videos_from_channel(channel_usename):
             GROUP BY videourl
         ) vc ON vc.videourl = v.videourl
         WHERE u.username = %s
-        ;""", [channel_usename])
+        LIMIT %s OFFSET %s
+        ;""", [channel_usename, limit, offset])
     result = cur.fetchall()
     close_connection(cur, conn)
 
@@ -376,7 +380,99 @@ def is_comment_from(comment_pk, username):
     if len(result) == 0 : return False
     return True
 
+def get_param_of_video(video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT v.is_hidden
+            FROM videos v
+            WHERE v.videourl = %s
+        ;""", [video_id])
+    is_hidden = cur.fetchone()
+    cur.execute("""SELECT tags
+                FROM has_tag
+                WHERE videourl = %s
+            ;""", [video_id])
+    tags_list = cur.fetchall()
+    close_connection(cur, conn)
+    return [is_hidden[0], [tuple[0] for tuple in tags_list]]
+
+def is_video_from(video_id, username):
+    cur, conn = connection()
+    cur.execute("""SELECT v.videourl
+            FROM videos v
+            LEFT JOIN users u ON u.user_pk = v.user_pk
+            WHERE v.videourl = %s AND u.username = %s
+        ;""", [video_id, username])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    if result : return True
+    return False
+
+def toggle_is_hidden_of(video_id):
+    try:
+        cur, conn = connection()
+        cur.execute("""UPDATE videos v
+        SET is_hidden = NOT is_hidden
+        WHERE v.videourl = %s
+        ;""", [video_id])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
+def get_tags_of_video(video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT tags
+                FROM has_tag
+                WHERE videourl = %s
+            ;""", [video_id])
+    tags_list = cur.fetchall()
+    close_connection(cur, conn)
+    return [tuple[0] for tuple in tags_list]
+
+def remove_tag_from_video(tag_name, video_id):
+    try:
+        cur, conn = connection()
+        cur.execute("""DELETE FROM has_tag
+            WHERE videourl = %s AND tags = %s
+            ;""", [video_id, tag_name])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
+def search_for_tag_request(tag_search):
+    cur, conn = connection()
+    cur.execute("""SELECT * 
+            FROM tags t
+            WHERE t.tags ILIKE %s
+            LIMIT 7
+            ;""", ['%'+tag_search+'%'])
+    tags_list = cur.fetchall()
+    close_connection(cur, conn)
+    return [tuple[0] for tuple in tags_list]
+
+def add_tag_on_video(video_id, tag):
+    try:
+        cur, conn = connection()
+        cur.execute("""WITH new_tag AS (
+                    INSERT INTO tags (tags)
+                    VALUES (%s)
+                    ON CONFLICT (tags) DO NOTHING
+                    RETURNING tags
+                )
+                INSERT INTO has_tag (videourl, tags)
+                SELECT %s, tags FROM new_tag
+                UNION ALL
+                SELECT %s, tags FROM tags WHERE tags = %s
+                ;""", [tag, video_id, video_id, tag])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
 if __name__ == "__main__" :
-    print(get_comments_of_video("Bird"))
+    # print(get_comments_of_video("Bird"))
     # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
     # print(update_comment_from_pk(5, "It must fly so fast !!!"))
+    # print(search_for_tag_request('anim'))
+    print(add_tag_on_video("Bird", "tag"))

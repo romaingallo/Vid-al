@@ -86,12 +86,16 @@
     display: block;
 }
 
+.video-card .is_hidden {
+    opacity: 50%;
+}
+
 /* meta sous la miniature */
 .video-card .meta {
     padding: 10px;
     display: flex;
     gap: 10px;
-    align-items: flex-start;
+    align-items: center;
 }
 
 /* logo chaine */
@@ -127,6 +131,22 @@
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
+}
+
+.video-card .editicon {
+    width: 20px;
+    height: 20px;
+    object-fit: cover;
+    /* background-color: #fbfbfb00; */
+}
+.video-card .editicon:hover {
+    background-color: #c4c4c4;
+}
+
+.video-card .editlink {
+    display: flex; /* Ajoute cette propriété */
+    align-items: center; /* Ajoute cette propriété */
+    justify-content: center; /* Optionnel : pour centrer aussi horizontalement */
 }
 
 

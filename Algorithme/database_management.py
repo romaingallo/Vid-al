@@ -194,13 +194,80 @@ conn.autocommit = True
 #         WHERE comment_pk =%s
 #         ;""", ['AMazing video', 2])
 # get if username
-cur.execute("""SELECT u.username, c.content, c.date, c.comment_pk
-            FROM comments c
-            LEFT JOIN users u ON u.user_pk = c.user_pk
-            WHERE c.comment_pk = %s AND u.username = %s
-        ;""", [6, 'One'])
+# cur.execute("""SELECT u.username, c.content, c.date, c.comment_pk
+#             FROM comments c
+#             LEFT JOIN users u ON u.user_pk = c.user_pk
+#             WHERE c.comment_pk = %s AND u.username = %s
+#         ;""", [6, 'One'])
 
-print(cur.fetchall())
+
+
+# test auteur de video
+# cur.execute("""SELECT v.videourl
+#             FROM videos v
+#             LEFT JOIN users u ON u.user_pk = v.user_pk
+#             WHERE v.videourl = %s AND u.username = %s
+#         ;""", ['Howls_piano', 'One'])
+
+
+
+# Edit video
+# get parameters
+# cur.execute("""SELECT v.is_hidden
+#             FROM videos v
+#             WHERE v.videourl = %s
+#         ;""", ['Howls_piano'])
+# toggle is_hidden
+# cur.execute("""UPDATE videos v
+#         SET is_hidden = NOT is_hidden
+#         WHERE v.videourl = %s
+#         ;""", ['Howls_piano'])
+
+# Tags
+# get from video
+# cur.execute("""SELECT tags
+#             FROM has_tag
+#             WHERE videourl = %s
+#         ;""", ['Howls_piano'])
+# create tag (new tag)
+# cur.execute("""INSERT INTO tags (tags)
+#         VALUES (%s)
+#         ;""", ["Gaming"])
+# add tag to video
+# cur.execute("""INSERT INTO has_tag (videourl, tags)
+#         VALUES (%s, %s)
+#         ;""", ['video_test_00', 'Humour'])
+# remove tag from video
+# cur.execute("""DELETE FROM has_tag
+# 	WHERE videourl = %s AND tags = %s
+# 	;""", ['video_test_00', 'Gaming'])
+# search for tag
+# cur.execute("""SELECT * 
+#             FROM tags
+#             WHERE to_tsvector('french', tags) @@ to_tsquery('french', %s)
+#             LIMIT 7
+#             ;""", ['anim'])
+# cur.execute("""SELECT * 
+#             FROM tags t
+#             WHERE t.tags ILIKE %s
+#             LIMIT 7
+#             ;""", ['%an%'])
+# add and create tag to video if no tag
+video_id, tag_name = 'video_test_00', 'VLOG'
+cur.execute("""WITH new_tag AS (
+                INSERT INTO tags (tags)
+                VALUES (%s)
+                ON CONFLICT (tags) DO NOTHING
+                RETURNING tags
+            )
+            INSERT INTO has_tag (videourl, tags)
+            SELECT %s, tags FROM new_tag
+            UNION ALL
+            SELECT %s, tags FROM tags WHERE tags = %s
+            ;""", [tag_name, video_id, video_id, tag_name])
+
+
+# print(cur.fetchall())
 
 cur.close()
 conn.close()

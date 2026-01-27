@@ -3,15 +3,16 @@
     <title>Vidéal</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/style_login.css">
+    <link rel="stylesheet" href="/github_style.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
 {% endblock %}
 {% block content %}
     <form action="#" method="post" class="form">
         <label for="usrname" class="usernametext">Username:</label><br>
-        <input type="text" id="usrname" name="usrname" class="boxinput"><br>
+        <input type="text" id="usrname" name="usrname" class="githubboxinput"><br>
         <label for="psswrd" class="passwordtext">Password:</label><br>
-        <input type="text" id="psswrd" name="psswrd" class="boxinput"><br>
-        <input type="submit" value="Log in" class="submitbutton">
+        <input type="text" id="psswrd" name="psswrd" class="githubboxinput"><br>
+        <input type="submit" value="Log in" class="githubbutton">
     </form>
 
     <div class="textinforegister">Never logged in ? <a href="register">Register</a> first !</div>

@@ -5,6 +5,7 @@ import os
 from datetime import timedelta
 from werkzeug.utils import secure_filename
 import requests as req
+import json
 
 INTERFACE_DIR = os.path.join(os.path.dirname(__file__), 'Interface client')
 app = Flask(__name__, static_folder=INTERFACE_DIR, static_url_path='', template_folder=INTERFACE_DIR)
@@ -14,6 +15,8 @@ app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'Interface
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000 # max upload file size = 16 megabytes
 CORS(app)  # autorise toutes les origines (adapter en prod)
+
+MAX_TAG_NUMBER_ON_VIDEO = 5
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -88,9 +91,10 @@ def videos(offset):
     data = get_videos(like_scale, view_scale, limit, offset)
     return jsonify(data)
 
-@app.route('/api/channel/<channelId>')
-def channel(channelId):
-    data = get_all_videos_from_channel(channelId)
+@app.route('/api/channel/<channelId>/<offset>')
+def channel(channelId, offset):
+    limit = 6
+    data = get_all_videos_from_channel(channelId, limit, offset)
     return jsonify(data)
 
 @app.route('/api/videos/<video_id>/react', methods=['POST'])
@@ -196,9 +200,78 @@ def visit_channel(channel_name):
     host_url = get_host_url_from_username(channel_name)
     if "user" in session : 
         if session["user"] == channel_name :
-            return render_template("visit_channel.html", name=channel_name, own_profile=True, hostURL=host_url)
-    return render_template("visit_channel.html", name=channel_name, own_profile=False, hostURL=host_url)
+            return render_template("visit_channel.html", 
+                                   name=channel_name, 
+                                   own_profile=True, 
+                                   hostURL=host_url)
+    return render_template("visit_channel.html", 
+                           name=channel_name, 
+                           own_profile=False, 
+                           hostURL=host_url)
 
+@app.route('/edit/<channel_name>/<video_id>')
+def edit(channel_name, video_id):
+    parameters = get_param_of_video(video_id)
+    return render_template("edit_video.html",
+                           is_hidden = parameters[0],
+                           channel_name = channel_name,
+                           video_id = video_id,
+                           tag_list = parameters[1])
+
+@app.route('/api/edit/toggle_is_hidden', methods=['POST'])
+def toggle_is_hidden():
+    if request.method == 'POST':
+        if "user" in session: 
+            video_id = request.form.get('video_id')
+            if is_video_from(video_id, session["user"]):
+                if toggle_is_hidden_of(video_id):
+                    return '', 200
+                else : return jsonify({"error": 'Toggle failed'}), 500
+            else: return jsonify({"error": 'User Unauthorized'}), 401
+        else:
+            return jsonify({"error": 'User Unauthorized'}), 401
+    return '', 400
+
+@app.route('/api/edit/remove_tag', methods=['POST'])
+def remove_tag():
+    if request.method == 'POST':
+        if "user" in session: 
+            video_id = request.form.get('video_id')
+            if is_video_from(video_id, session["user"]):
+                tag_name = request.form.get('tag_name')
+                if remove_tag_from_video(tag_name, video_id):
+                    return '', 200
+                else : return jsonify({"error": f'Internal error when deletion of tag {tag_name}'}), 500
+            else: return jsonify({"error": 'User Unauthorized'}), 401
+        else:
+            return jsonify({"error": 'User Unauthorized'}), 401
+    return '', 400
+
+@app.route('/api/edit/add_tag', methods=['POST'])
+def add_tag():
+    if request.method == 'POST':
+        if "user" in session: 
+            video_id = request.form.get('video_id')
+            if is_video_from(video_id, session["user"]):
+                list_tags_on_video = get_tags_of_video(video_id)
+                if len(list_tags_on_video)+1 > MAX_TAG_NUMBER_ON_VIDEO: return jsonify({"error": f'The video has already been tagged {MAX_TAG_NUMBER_ON_VIDEO} times (max per video).'}), 500
+                tag_name = request.form.get('tag_name')
+                if tag_name in list_tags_on_video: return jsonify({"error": f'The video has already been tagged {tag_name}.'}), 500
+                if add_tag_on_video(video_id, tag_name):
+                    return '', 200
+                else : return jsonify({"error": f'Internal error when adding tag {tag_name}'}), 500
+            else: return jsonify({"error": 'User Unauthorized'}), 401
+        else:
+            return jsonify({"error": 'User Unauthorized'}), 401
+    return '', 400
+
+@app.route('/api/search/tag', methods=['POST'])
+def search_for_tag():
+    if request.method == 'POST':
+        tag_searched = request.form.get('tag_searched')
+        tag_list = search_for_tag_request(tag_searched)
+        return json.dumps(tag_list), 200
+    return '', 400
 
 @app.route('/watch/<video_id>', methods=['GET', 'POST'])
 def watch(video_id):

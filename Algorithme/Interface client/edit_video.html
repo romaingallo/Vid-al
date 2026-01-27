@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Vidéal</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/github_style.css">
+    <link rel="stylesheet" href="/style_edit_video.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
+    <div class="editpagecontent">
+
+
+        <div class="infotext">
+            To change the title, description, thumbnail or the video itself, edit the host server, either with local_editor.py or the files directly. <br>
+            Manage comments on the video page ? While connected as author of the video ?
+        </div>
+        
+        <div class="settingblock">
+            {% if is_hidden %}
+                <input type="checkbox" id="ishidden" name="ishidden" onclick="toggle_is_hidden()" checked>
+            {% else %}
+                <input type="checkbox" id="ishidden" name="ishidden" onclick="toggle_is_hidden()">
+            {% endif %}
+            <label for="ishidden">is video hidden</label>
+        </div>
+
+        <!-- <div class="settingblock">
+            <button class="githubbutton">Delete video</button>
+        </div> -->
+
+        <div class="settingblock">
+            List of tags :
+            <ul class="taglist" id="taglist">
+                {% for tag in tag_list %}
+                <li class="taglistelement" id="{{tag}}">{{tag}}<img src="/images/close_cross.svg" class="imgbuttonicon" alt="X" onclick="remove_tag('{{tag}}')"></li>
+                {%endfor%}
+            </ul>
+        </div>
+
+        <div class="settingblock">
+            <input id="searchtagbar" 
+               onkeyup="search_tag()" 
+               type="text" name="search" 
+               placeholder="Search a tag">
+            <div>
+                
+                <ul id="searchtagsresults">
+                    
+                </ul>
+            </div>
+        </div>
+    
+    
+    
+    </div>
+
+    <script src="/edit_video.js"></script>
+    <script type="text/javascript">
+            const channel_name = '{{channel_name}}';
+            const video_id = '{{video_id}}';
+         </script>
+
+
+{% endblock %}
