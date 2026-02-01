@@ -3,6 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 import os
 import json
 import shutil
+import ffmpeg_utils
 
 class VideoEditorApp:
     def __init__(self, root):
@@ -68,12 +69,16 @@ class VideoEditorApp:
         self.thumbnail_canvas = tk.Canvas(self.edit_frame, width=200, height=150, bg="lightgray")
         self.thumbnail_canvas.grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
 
-        # Boutons pour sauvegarder et charger une nouvelle miniature
+        # Boutons pour sauvegarder, charger une nouvelle miniature, mettre à jour la video
         self.save_button = ttk.Button(self.edit_frame, text="Save", command=self.save_metadata)
         self.save_button.grid(row=4, column=0, pady=10)
 
         self.upload_button = ttk.Button(self.edit_frame, text="Load thumbnail", command=self.upload_thumbnail)
         self.upload_button.grid(row=4, column=1, pady=10)
+
+        # Boutons pour sauvegarder et charger une nouvelle miniature
+        self.update_video_button = ttk.Button(self.edit_frame, text="Update video (file only)", command=self.update_video)
+        self.update_video_button.grid(row=4, column=3, pady=10)
 
         # Lier la sélection d'une vidéo à l'affichage des métadonnées
         self.video_listbox.bind('<<ListboxSelect>>', self.load_video_metadata)
@@ -123,6 +128,18 @@ class VideoEditorApp:
         if file_path:
             self.display_thumbnail(file_path)
             self.save_thumbnail(file_path)
+    
+    def update_video(self):
+        # Ouvrir une boîte de dialogue pour sélectionner une nouvelle video
+        selection = self.video_listbox.curselection()
+        if not selection:
+            messagebox.showinfo("Error", "No video selected")
+            return
+        video_file = self.video_listbox.get(selection[0])
+        video_id = os.path.splitext(video_file)[0] # ===================  ne devrait pas utiliser le nom du fichier pour l'id
+        file_path = filedialog.askopenfilename(filetypes=[("Video", "*.mp4")])
+        if file_path:
+            ffmpeg_utils.process_video(file_path, video_id, self.video_dir)
 
     def save_thumbnail(self, thumbnail_path):
         selection = self.video_listbox.curselection()
@@ -274,7 +291,8 @@ class VideoEditorApp:
             return
         # print(self.select_video_description_entry.get(1.0, tk.END).strip())
 
-        self.copy_video(self.add_video_path_to_video, self.select_video_url_entry.get())
+        # self.copy_video(self.add_video_path_to_video, self.select_video_url_entry.get())
+        ffmpeg_utils.process_video(self.add_video_path_to_video,  self.select_video_url_entry.get(), self.video_dir)
         self.copy_thumbnail(self.add_video_path_to_thumbnail_img, self.select_video_url_entry.get())
         self.add_video_save_metadata(self.select_video_url_entry.get(),
                                      self.select_video_title_entry.get(),

@@ -5,10 +5,17 @@ if (!videoElement) throw new Error('Element #videoElement introuvable');
 // const params = new URLSearchParams(window.location.search);
 // const videoId = params.get('video');
 
+let hls_url = '';
+let dash_url = '';
+
 if (videoId !== '') {
+    hls_url = `${hostURLSource}/video/${videoId}/playlist.m3u8`
+    dash_url = `${hostURLSource}/video/${videoId}/manifest.mpd`
     const sourceElement = document.createElement('source');
-    sourceElement.src = `${hostURLSource}/video/${videoId}`;
-    sourceElement.type = 'video/mp4';
+    // sourceElement.src = `${hostURLSource}/video/dash/${videoId}`;
+    // sourceElement.type = 'video/mp4';
+    sourceElement.src = dash_url;
+    sourceElement.type = 'application/dash+xml';
     videoElement.appendChild(sourceElement);
 } else {
     console.warn('Aucun paramètre video dans l\'URL');
@@ -36,3 +43,20 @@ async function loadMetadataFromServer() {
 }
 
 loadMetadataFromServer()
+
+
+document.addEventListener('DOMContentLoaded', function() {
+            var player = videojs('video', {
+                techOrder: ["html5"],
+                sources: [
+                    {
+                        src: dash_url,
+                        type: "application/dash+xml"
+                    }
+                ]
+            });
+
+            player.on('error', function() {
+                console.log('Video player error:', player.error());
+            });
+        });

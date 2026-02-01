@@ -4,12 +4,25 @@
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/style_watch.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.20.3/video-js.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.20.3/video.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.15.0/videojs-contrib-hls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.0.1/dash.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/4.2.1/videojs-dash.min.js"></script>
 {% endblock %}
 {% block content %}
     <main id="contentwatch" class="contentwatch">
 
         <div class="videopanel">
-            <video id="video" controls autoplay>
+            <video 
+                id="video" 
+                controls 
+                autoplay="true" preload="auto"
+                class="video-js vjs-big-play-centered"
+                width="640"
+                height="360"
+                
+            >
             </video>
             <div class="info">
                 <div><a id="title" class="title">Titre de la vidéo exemple #000</a></div>

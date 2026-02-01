@@ -1,4 +1,4 @@
-from flask import Flask, Response, send_file, jsonify
+from flask import Flask, Response, send_file, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 from utils import *
@@ -9,24 +9,36 @@ CORS(app)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-@app.route('/video/<video_id>')
-def stream_video(video_id):
-    # Chemin vers le dossier des vidéos
-    # video_dir = '/Vidéos'
-    video_dir = os.path.join(current_dir, 'Vidéos')
-    video_path = os.path.join(video_dir, f'{video_id}.mp4')
+# @app.route('/video/<video_id>')
+# def stream_video(video_id):
+#     # Chemin vers le dossier des vidéos
+#     # video_dir = '/Vidéos'
+#     video_dir = os.path.join(current_dir, 'Vidéos')
+#     video_path = os.path.join(video_dir, f'{video_id}.mp4')
     
-    # Vérifier si le fichier existe
-    if not os.path.exists(video_path):
-        return "Vidéo non trouvée", 404
+#     # Vérifier si le fichier existe
+#     if not os.path.exists(video_path):
+#         return "Vidéo non trouvée", 404
         
-    # Envoyer le fichier avec support du streaming
-    return send_file(
-        video_path,
-        mimetype='video/mp4',
-        as_attachment=False,
-        conditional=True  # Active le support des requêtes partielles
-    )
+#     # Envoyer le fichier avec support du streaming
+#     return send_file(
+#         video_path,
+#         mimetype='video/mp4',
+#         as_attachment=False,
+#         conditional=True  # Active le support des requêtes partielles
+#     )
+
+@app.route('/video/<video_id>/<path:filename>')
+def stream_video(video_id, filename):
+    """Serve the video stream files"""
+
+    video_dir = os.path.join(current_dir, 'Vidéos', video_id)
+
+    # Vérifier si le fichier existe
+    if not os.path.exists(video_dir) or not os.path.exists(os.path.join(video_dir, filename)):
+        return "Vidéo non trouvée", 404
+    
+    return send_from_directory(video_dir, filename)
 
 @app.route('/meta/<video_id>')
 def meta_video(video_id):
