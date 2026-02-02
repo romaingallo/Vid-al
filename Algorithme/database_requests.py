@@ -470,9 +470,108 @@ def add_tag_on_video(video_id, tag):
     except:
         return False
 
+def get_followed_videos(follower_username, limit, offset):
+    follower_user_pk = get_user_pk_from_username(follower_username)
+    if follower_user_pk == False : return []
+    cur, conn = connection()
+    cur.execute("""
+                SELECT v.videourl,
+                    u.username,
+                    COALESCE(lc.nb_likes, 0)    AS nb_likes,
+                    COALESCE(vc.nb_views, 0)    AS nb_views,
+                    u.channel_url               AS channel_url,
+                    COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
+                    v.is_hidden
+                FROM videos v
+                JOIN users u ON v.user_pk = u.user_pk
+                LEFT JOIN (
+                    SELECT videourl,
+                        COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+                        COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+                    FROM has_been_liked_by
+                    GROUP BY videourl
+                ) lc ON lc.videourl = v.videourl
+                LEFT JOIN (
+                    SELECT videourl, COUNT(*) AS nb_views
+                    FROM has_been_viewed_by
+                    GROUP BY videourl
+                ) vc ON vc.videourl = v.videourl
+                JOIN is_following if ON v.user_pk = if.followed_pk
+                WHERE if.follower_pk = %s
+                LIMIT %s OFFSET %s
+                ;""", [follower_user_pk, limit, offset])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+
+    return convert_sql_output_to_list_for_card(result)
+
+def add_channel_to_follow(follower_username, channel_followed_username):
+    try:
+        cur, conn = connection()
+        cur.execute("""INSERT INTO is_following (follower_pk, followed_pk)
+                SELECT 
+                    (SELECT user_pk FROM users WHERE username = %s), 
+                    (SELECT user_pk FROM users WHERE username = %s)
+                ;""", [follower_username, channel_followed_username])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
+def remove_channel_to_follow(follower_username, channel_followed_username):
+    try:
+        cur, conn = connection()
+        cur.execute("""DELETE FROM is_following
+            WHERE follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
+                    AND followed_pk = (SELECT user_pk FROM users WHERE username = %s)
+            ;""", [follower_username, channel_followed_username])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
+def get_if_follow_channel(follower_username, channel_followed_username):
+    cur, conn = connection()
+    cur.execute("""SELECT EXISTS(
+                    SELECT 1
+                    FROM is_following
+                    WHERE follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
+                            AND followed_pk = (SELECT user_pk FROM users WHERE username = %s)
+                    )
+            ;""", [follower_username, channel_followed_username])
+    result = cur.fetchone()[0]
+    close_connection(cur, conn)
+    return result
+
+def toggle_following_channel(follower_username, channel_followed_username):
+    try:
+        if get_if_follow_channel(follower_username, channel_followed_username):
+            return remove_channel_to_follow(follower_username, channel_followed_username)
+        return add_channel_to_follow(follower_username, channel_followed_username)
+    except:
+        return False
+
+def get_list_of_followed_channels(follower_username):
+    cur, conn = connection()
+    cur.execute("""SELECT u.username 
+            FROM users u 
+            WHERE u.user_pk IN ( 
+                SELECT if.followed_pk 
+                FROM is_following if 
+                WHERE if.follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
+            )
+            ;""", [follower_username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    return [tuple[0] for tuple in result]
+
 if __name__ == "__main__" :
     # print(get_comments_of_video("Bird"))
     # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
     # print(update_comment_from_pk(5, "It must fly so fast !!!"))
     # print(search_for_tag_request('anim'))
-    print(add_tag_on_video("Bird", "tag"))
+    # print(add_tag_on_video("Bird", "tag"))
+    # print(get_followed_videos("One", 6, 0))
+    # print(get_if_follow_channel('Walter White', 'Madeline'))
+    # print(toggle_following_channel('Walter White', 'Madeline'))
+    print(get_list_of_followed_channels('One'))

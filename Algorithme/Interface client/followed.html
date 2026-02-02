@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Vidéal - Videos followed</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
+
+    <div>
+        <h1>Videos from your following list.</h1>
+        <button onclick="window.location.href='/userfollowedlist';">View all the user you follow.</button>
+        <hr/>
+    </div>
+    
+    <main id="gridcontent" class="gridcontent"></main>
+
+    <script type="text/javascript">
+            const fecth_for_followed = true;
+         </script>
+    <script src="/script.js"></script>
+{% endblock %}
+

@@ -3,6 +3,7 @@
     <title>Vidéal</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/style_watch.css">
+    <link rel="stylesheet" href="/github_style.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.20.3/video-js.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.20.3/video.min.js"></script>
@@ -25,18 +26,25 @@
             >
             </video>
             <div class="info">
-                <div><a id="title" class="title">Titre de la vidéo exemple #000</a></div>
+                <div><a id="title" class="title">Titre de la vidéo exemple #xxx</a></div>
                 <div>
                     <a href="/visit_channel/{{name}}"> <img class="pfpwatch" src="/pfp_of/{{name}}" alt="${{name}} pfp"></a>
-                    <a id="sub" class="subtitle" href="/visit_channel/{{name}}">{{name}} • {{nb_views}} vues • 000 jours</a>
-                    <div class="actions">
-                        <button id="btn-like" class="btn {{green_state}}" aria-pressed="false">
-                            Like <span id="like-count">{{nb_likes}}</span>
-                        </button>
-                        <button id="btn-dislike" class="btn {{red_state}}" aria-pressed="false">
-                            Dislike <span id="dislike-count">{{nb_dislikes}}</span>
-                        </button>
-                    </div>
+                    <a id="sub" class="subtitle" href="/visit_channel/{{name}}">{{name}} • {{nb_views}} vues • xxx jours</a>
+                    {% if connected %}
+                        <div class="actions">
+                            <button id="btn-like" class="btn {{green_state}}" aria-pressed="false">
+                                Like <span id="like-count">{{nb_likes}}</span>
+                            </button>
+                            <button id="btn-dislike" class="btn {{red_state}}" aria-pressed="false">
+                                Dislike <span id="dislike-count">{{nb_dislikes}}</span>
+                            </button>
+                            {% if is_following %}
+                            <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Unfollow</button>
+                            {% else %}
+                            <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Follow</button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
             <div id="description">Description</div>
@@ -47,7 +55,7 @@
                 <input type="submit" value="Send" class="submitcommentbutton">
             </form>
             {% else %}
-            <div>You need to be logged in to write a comment.</div>
+            <div>You need to be logged in to write a comment, to like, dislike, or to follow the channel.</div>
             {% endif %}
             <div id="comments">
                 {%for i in range(0, lencomments)%}
@@ -86,4 +94,5 @@
     <script src="/script.js"></script>
     <script src="/watch_reaction.js"></script>
     <script src="/deletecommentbutton.js"></script>
+    <script src="/following.js"></script>
 {% endblock %}

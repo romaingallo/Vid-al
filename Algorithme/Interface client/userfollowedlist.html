@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}
+    <title>Vidéal - List of user you are following.</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style_visit_channel.css">
+    <link rel="stylesheet" href="/github_style.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
+
+    <div>
+        <h1>List of user you are following :</h1>
+        <hr/>
+        <div>
+            {% for followed_channel_name in list_of_followed_channels %}
+                <div class="channelbar">
+                    <a class="hidetextdecoration forceblackcolor" href="/visit_channel/{{followed_channel_name}}">
+                        <h1>{{followed_channel_name}}</h1>
+                    </a>
+                    <a class="hidetextdecoration" href="/visit_channel/{{followed_channel_name}}">
+                        <img class="pfpvisit" src="/pfp_of/{{followed_channel_name}}" alt="${{followed_channel_name}} pfp">
+                    </a>
+                    <button class="githubbutton" onclick="toggle_is_following('{{followed_channel_name}}', this)">Unfollow</button>
+                </div>
+            {%endfor%}
+        </div>
+    </div>
+
+    <script src="/following.js"></script>
+    
+{% endblock %}

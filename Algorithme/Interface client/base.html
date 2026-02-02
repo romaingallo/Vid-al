@@ -9,7 +9,9 @@
     <div class="topbar" id="topbar">
         <a class="maintitle" href="/">Vidéal</a>
         <input type="text" class="searchbar" id="searchbar" name="searchbar" placeholder="Recherche WIP"/>
-        <a class="notif" href="/"><img src="/images/bell.svg" class="notiflogo" alt="Notifications"></a>
+        {% if connected %}
+        <a class="notif" href="/followed"><img src="/images/bell.svg" class="notiflogo" alt="Notifications"></a>
+        {% endif %}
         <a class="user" href="/login"><img src="/pfp" class="userlogo" alt="Paramètres"></a>
         <hr/>
     </div>

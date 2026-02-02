@@ -253,21 +253,81 @@ conn.autocommit = True
 #             LIMIT 7
 #             ;""", ['%an%'])
 # add and create tag to video if no tag
-video_id, tag_name = 'video_test_00', 'VLOG'
-cur.execute("""WITH new_tag AS (
-                INSERT INTO tags (tags)
-                VALUES (%s)
-                ON CONFLICT (tags) DO NOTHING
-                RETURNING tags
+# video_id, tag_name = 'video_test_00', 'VLOG'
+# cur.execute("""WITH new_tag AS (
+#                 INSERT INTO tags (tags)
+#                 VALUES (%s)
+#                 ON CONFLICT (tags) DO NOTHING
+#                 RETURNING tags
+#             )
+#             INSERT INTO has_tag (videourl, tags)
+#             SELECT %s, tags FROM new_tag
+#             UNION ALL
+#             SELECT %s, tags FROM tags WHERE tags = %s
+#             ;""", [tag_name, video_id, video_id, tag_name])
+
+
+# # get followed video
+# follower_user_pk, limit, offset = 7, 8, 0
+# cur.execute("""
+#         SELECT v.videourl,
+#                u.username,
+#                COALESCE(lc.nb_likes, 0)    AS nb_likes,
+#                COALESCE(vc.nb_views, 0)    AS nb_views,
+#                u.channel_url               AS channel_url,
+#                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
+#                v.is_hidden
+#         FROM videos v
+#         JOIN users u ON v.user_pk = u.user_pk
+#         LEFT JOIN (
+#             SELECT videourl,
+#                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+#                    COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+#             FROM has_been_liked_by
+#             GROUP BY videourl
+#         ) lc ON lc.videourl = v.videourl
+#         LEFT JOIN (
+#             SELECT videourl, COUNT(*) AS nb_views
+#             FROM has_been_viewed_by
+#             GROUP BY videourl
+#         ) vc ON vc.videourl = v.videourl
+#         JOIN is_following if ON v.user_pk = if.followed_pk
+#         WHERE if.follower_pk = %s
+#         LIMIT %s OFFSET %s
+#         ;""", [follower_user_pk, limit, offset])
+
+# add a channel to follow
+# cur.execute("""INSERT INTO is_following (follower_pk, followed_pk)
+#         SELECT 
+#             (SELECT user_pk FROM users WHERE username = %s), 
+#             (SELECT user_pk FROM users WHERE username = %s)
+#         ;""", ['Walter White', 'Madeline'])
+# remove a channel to follow
+# cur.execute("""DELETE FROM is_following
+# 	WHERE follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
+#             AND followed_pk = (SELECT user_pk FROM users WHERE username = %s)
+# 	;""", ['Walter White', 'Madeline'])
+# get if follow channel
+# cur.execute("""SELECT EXISTS(
+#                 SELECT 1
+#                 FROM is_following
+#                 WHERE follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
+#                         AND followed_pk = (SELECT user_pk FROM users WHERE username = %s)
+#                 )
+#         ;""", ['Walter White', 'Madeline'])
+# get list of followed channels
+cur.execute("""SELECT u.username 
+            FROM users u 
+            WHERE u.user_pk IN ( 
+                SELECT if.followed_pk 
+                FROM is_following if 
+                WHERE if.follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
             )
-            INSERT INTO has_tag (videourl, tags)
-            SELECT %s, tags FROM new_tag
-            UNION ALL
-            SELECT %s, tags FROM tags WHERE tags = %s
-            ;""", [tag_name, video_id, video_id, tag_name])
+            ;""", ['One'])
 
 
-# print(cur.fetchall())
+print(cur.fetchall())
+# print(cur.fetchone())
 
 cur.close()
 conn.close()

@@ -21,6 +21,9 @@ async function loadFromServer() {
             if (typeof channel_name !== 'undefined') {
                 url = `/api/channel/${channel_name}/` + offset;
             }
+            if (typeof fecth_for_followed !== 'undefined') {
+                url = `/api/followedvideos/` + offset;
+            }
             offset += 6;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -94,7 +97,6 @@ async function createCard(i, data = null) {
             </div>
         `;
         if (typeof own_profile !== 'undefined') {
-            console.log(`${own_profile}  - ${typeof own_profile}`);
             if (own_profile) {
                 card.innerHTML = `
                     <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}"></a>

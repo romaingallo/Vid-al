@@ -56,9 +56,15 @@
   display: none;
 }
 
-
-
-
+.githubbutton.loading {
+  background: linear-gradient(currentColor 0 0) 0 100%/0% 100% no-repeat;
+  animation: l2 3s cubic-bezier(0.05, 0.9, 0.1, 1);
+}
+@keyframes l2 {
+  0% { background-size: 0% 100%; }
+  90% { background-size: 95% 100%; }
+  100% { background-size: 95% 100%; }
+}
 
 /* 'GitHub input' from https://copy-paste-css.com/form-input-text */
 .githubboxinput{
@@ -95,4 +101,12 @@ margin-bottom: 1%;
 }
 .imgbuttonicon:hover{
     background-color: #c3c3c3;
+}
+
+
+.hidetextdecoration {
+  text-decoration: none;
+}
+.forceblackcolor {
+  color: black;
 }

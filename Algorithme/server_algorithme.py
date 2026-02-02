@@ -17,6 +17,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000 # max upload file size = 16 
 CORS(app)  # autorise toutes les origines (adapter en prod)
 
 MAX_TAG_NUMBER_ON_VIDEO = 5
+NUMBER_OF_VIDEO_PER_FETCH = 6 # -> le fecth javascript fait des offsets de 6, n'est pas lié à cette variable
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -37,9 +38,8 @@ def home():
     # return send_file(os.path.abspath(path))
     if "user" in session:
         user = session["user"]
-        print("user = " + user)
-    else : print("not in session")
-    return render_template('main.html')
+    return render_template('main.html',
+                           connected = "user" in session)
 
 @app.route('/login', methods=["POST", "GET"])
 def login():
@@ -54,7 +54,8 @@ def login():
     else : 
         if "user" in session:
             return redirect(url_for('visit_channel', channel_name=session["user"]))
-        return render_template('login.html')
+        return render_template('login.html',
+                               connected = "user" in session)
 
 @app.route('/register', methods=["POST", "GET"])
 def register():
@@ -76,7 +77,8 @@ def register():
     else : 
         if "user" in session:
             redirect(url_for('home'))
-        return render_template('register.html')
+        return render_template('register.html',
+                               connected = "user" in session)
 
 @app.route('/logout')
 def logout():
@@ -86,15 +88,15 @@ def logout():
 @app.route('/api/videos/<offset>')
 def videos(offset):
     like_scale = 1
-    limit = 6
+    NUMBER_OF_VIDEO_PER_FETCH = 6
     view_scale = 0.1
-    data = get_videos(like_scale, view_scale, limit, offset)
+    data = get_videos(like_scale, view_scale, NUMBER_OF_VIDEO_PER_FETCH, offset)
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>/<offset>')
 def channel(channelId, offset):
-    limit = 6
-    data = get_all_videos_from_channel(channelId, limit, offset)
+    NUMBER_OF_VIDEO_PER_FETCH = 6
+    data = get_all_videos_from_channel(channelId, NUMBER_OF_VIDEO_PER_FETCH, offset)
     return jsonify(data)
 
 @app.route('/api/videos/<video_id>/react', methods=['POST'])
@@ -199,15 +201,49 @@ def pfp_of(username):
 def visit_channel(channel_name):
     host_url = get_host_url_from_username(channel_name)
     if "user" in session : 
-        if session["user"] == channel_name :
-            return render_template("visit_channel.html", 
+        return render_template("visit_channel.html", 
                                    name=channel_name, 
-                                   own_profile=True, 
-                                   hostURL=host_url)
+                                   own_profile= session["user"] == channel_name, 
+                                   hostURL=host_url,
+                                   connected = "user" in session,
+                                   is_following = get_if_follow_channel(session["user"], channel_name))
     return render_template("visit_channel.html", 
                            name=channel_name, 
                            own_profile=False, 
-                           hostURL=host_url)
+                           hostURL=host_url,
+                           connected = "user" in session)
+
+@app.route('/api/followedvideos/<offset>')
+def followedvideos(offset):
+    if "user" in session : 
+        NUMBER_OF_VIDEO_PER_FETCH = 6
+        data = get_followed_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, offset)
+        return jsonify(data), 200
+    return jsonify({"error": 'User Unauthorized'}), 401
+
+@app.route('/api/togglefollowing', methods=['POST'])
+def togglefollowing():
+    if request.method == 'POST':
+        if "user" in session : 
+            channel_followed_username = request.form.get('channel_followed_username')
+            if not channel_followed_username : jsonify({"error": "channel_followed_username is missing."}), 400
+            if toggle_following_channel(session["user"], channel_followed_username):
+                return '', 200
+            return jsonify({"error": 'Toggling the follow failed.'}), 500
+        return jsonify({"error": 'User Unauthorized'}), 401
+    return '', 400
+
+@app.route('/followed')
+def followed():
+    return render_template("followed.html",
+                           connected = "user" in session)
+
+@app.route('/userfollowedlist')
+def userfollowedlist():
+    if "user" in session :
+        return render_template("userfollowedlist.html",
+                            list_of_followed_channels = get_list_of_followed_channels(session["user"]))
+    return 'User not in session : no followed list.', 401
 
 @app.route('/edit/<channel_name>/<video_id>')
 def edit(channel_name, video_id):
@@ -216,7 +252,8 @@ def edit(channel_name, video_id):
                            is_hidden = parameters[0],
                            channel_name = channel_name,
                            video_id = video_id,
-                           tag_list = parameters[1])
+                           tag_list = parameters[1],
+                           connected = "user" in session)
 
 @app.route('/api/edit/toggle_is_hidden', methods=['POST'])
 def toggle_is_hidden():
@@ -302,8 +339,8 @@ def watch(video_id):
                            name = author_username,
                            green_state = green_state, red_state = red_state,
                            hostURL = host_url,
-                           comments = comments, lencomments = len(comments), connected = "user" in session, username = username)
-
+                           comments = comments, lencomments = len(comments), connected = "user" in session, username = username,
+                           is_following = get_if_follow_channel(username, author_username))
 
 @app.route('/upload_pfp', methods=['GET', 'POST'])
 def upload_pfp():
@@ -326,7 +363,8 @@ def upload_pfp():
                 return redirect(url_for('home'))
             else :
                 flash('The file should be a png.')
-        return render_template("upload_pfp.html")
+        return render_template("upload_pfp.html",
+                               connected = "user" in session)
     return redirect(url_for('home'))
 
 @app.route('/update_channel', methods=['GET', 'POST'])
@@ -355,10 +393,12 @@ def update_channel():
                     flash(f"Update on {new_channel_url} successful !")
                 else :
                     flash("You are not logged in with the right account : your server does not return your username.")
-                    return render_template("update_channel.html")
+                    return render_template("update_channel.html",
+                                           connected = "user" in session)
             else:
                 flash(f"channel_info_resp.status_code == {channel_info_resp.status_code}")
-        return render_template("update_channel.html")
+        return render_template("update_channel.html",
+                               connected = "user" in session)
     return redirect(url_for('login'))
 
 if __name__ == '__main__':

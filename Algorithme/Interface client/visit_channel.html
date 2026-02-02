@@ -11,22 +11,33 @@
     <div class="channelbar">
         <h1>{{name}}</h1>
         <img class="pfpvisit" src="/pfp_of/{{name}}" alt="${{name}} pfp">
+        {% if connected %}
+            {% if is_following %}
+                <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Unfollow</button>
+            {% else %}
+                <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Follow</button>
+            {% endif %}
+        {% endif %}
         {% if own_profile %}
+        <button onclick="window.location.href='/userfollowedlist';">View all the user you follow.</button>
         <button onclick="window.location.href='/logout';" class="githubbutton">Log out</button>
         <button onclick="window.location.href='/upload_pfp';" class="githubbutton">Update profile picture (png only)</button>
         <button onclick="window.location.href='/update_channel';" class="githubbutton">Update all video references</button>
         {% endif %}
-        <hr/>
     </div>
+    <hr/>
     
     <main id="gridcontent" class="gridcontent"></main>
 
     <script type="text/javascript">
             const channel_name = '{{name}}';
-            {% if own_profile %}
-            const own_profile = true;
-            {% endif %}
          </script>
+    {% if own_profile %}
+        <script type="text/javascript">
+                const own_profile = true;
+            </script>
+    {% endif %}
     <script src="/script.js"></script>
+    <script src="/following.js"></script>
 {% endblock %}
 
