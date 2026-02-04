@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'html/base.html' %}
 {% block title %}
     <title>Vidéal</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/style_login.css">
-    <link rel="stylesheet" href="/github_style.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style_login.css">
+    <link rel="stylesheet" href="/css/github_style.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
 {% endblock %}
 {% block content %}
@@ -12,11 +12,9 @@
         <input type="text" id="usrname" name="usrname" class="githubboxinput"><br>
         <label for="psswrd" class="passwordtext">Password:</label><br>
         <input type="text" id="psswrd" name="psswrd" class="githubboxinput"><br>
-        <input type="submit" value="Log in" class="githubbutton">
+        <input type="submit" value="Register" class="githubbutton">
     </form>
-
-    <div class="textinforegister">Never logged in ? <a href="register">Register</a> first !</div>
-
+    
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <div class=flashes>
@@ -27,6 +25,6 @@
         {% endif %}
     {% endwith %}
 
-    <script src="alert.js"></script>
+    <script src="/js/alert.js"></script>
 {% endblock %}
 

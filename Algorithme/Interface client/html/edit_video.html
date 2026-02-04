@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'html/base.html' %}
 {% block title %}
     <title>Vidéal</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/github_style.css">
-    <link rel="stylesheet" href="/style_edit_video.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/github_style.css">
+    <link rel="stylesheet" href="/css/style_edit_video.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
 {% endblock %}
 {% block content %}
@@ -54,7 +54,7 @@
     
     </div>
 
-    <script src="/edit_video.js"></script>
+    <script src="/js/edit_video.js"></script>
     <script type="text/javascript">
             const channel_name = '{{channel_name}}';
             const video_id = '{{video_id}}';

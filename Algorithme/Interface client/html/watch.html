@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'html/base.html' %}
 {% block title %}
     <title>Vidéal</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/style_watch.css">
-    <link rel="stylesheet" href="/github_style.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style_watch.css">
+    <link rel="stylesheet" href="/css/github_style.css">
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.20.3/video-js.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.20.3/video.min.js"></script>
@@ -90,9 +90,9 @@
             const videoId = '{{videoId}}';
             const hostURLSource = '{{hostURL}}';
          </script>
-    <script src="/video_source.js"></script>
-    <script src="/script.js"></script>
-    <script src="/watch_reaction.js"></script>
-    <script src="/deletecommentbutton.js"></script>
-    <script src="/following.js"></script>
+    <script src="/js/video_source.js"></script>
+    <script src="/js/script.js"></script>
+    <script src="/js/watch_reaction.js"></script>
+    <script src="/js/deletecommentbutton.js"></script>
+    <script src="/js/following.js"></script>
 {% endblock %}

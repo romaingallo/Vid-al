@@ -36,9 +36,7 @@ def convert_sql_output_to_json(data_input):
 def home():
     # path = os.path.join(os.path.dirname(__file__), '.', 'Interface client', 'main.html')
     # return send_file(os.path.abspath(path))
-    if "user" in session:
-        user = session["user"]
-    return render_template('main.html',
+    return render_template('html/main.html',
                            connected = "user" in session)
 
 @app.route('/login', methods=["POST", "GET"])
@@ -54,7 +52,7 @@ def login():
     else : 
         if "user" in session:
             return redirect(url_for('visit_channel', channel_name=session["user"]))
-        return render_template('login.html',
+        return render_template('html/login.html',
                                connected = "user" in session)
 
 @app.route('/register', methods=["POST", "GET"])
@@ -77,7 +75,7 @@ def register():
     else : 
         if "user" in session:
             redirect(url_for('home'))
-        return render_template('register.html',
+        return render_template('html/register.html',
                                connected = "user" in session)
 
 @app.route('/logout')
@@ -201,13 +199,13 @@ def pfp_of(username):
 def visit_channel(channel_name):
     host_url = get_host_url_from_username(channel_name)
     if "user" in session : 
-        return render_template("visit_channel.html", 
+        return render_template("html/visit_channel.html", 
                                    name=channel_name, 
                                    own_profile= session["user"] == channel_name, 
                                    hostURL=host_url,
                                    connected = "user" in session,
                                    is_following = get_if_follow_channel(session["user"], channel_name))
-    return render_template("visit_channel.html", 
+    return render_template("html/visit_channel.html", 
                            name=channel_name, 
                            own_profile=False, 
                            hostURL=host_url,
@@ -235,20 +233,20 @@ def togglefollowing():
 
 @app.route('/followed')
 def followed():
-    return render_template("followed.html",
+    return render_template("html/followed.html",
                            connected = "user" in session)
 
 @app.route('/userfollowedlist')
 def userfollowedlist():
     if "user" in session :
-        return render_template("userfollowedlist.html",
+        return render_template("html/userfollowedlist.html",
                             list_of_followed_channels = get_list_of_followed_channels(session["user"]))
     return 'User not in session : no followed list.', 401
 
 @app.route('/edit/<channel_name>/<video_id>')
 def edit(channel_name, video_id):
     parameters = get_param_of_video(video_id)
-    return render_template("edit_video.html",
+    return render_template("html/edit_video.html",
                            is_hidden = parameters[0],
                            channel_name = channel_name,
                            video_id = video_id,
@@ -333,7 +331,7 @@ def watch(video_id):
         like_state = get_user_has_liked_for_json(video_id, username)
         if like_state == 'like': green_state = 'green100'
         elif like_state == 'dislike' : red_state = 'red100'
-    return render_template("watch.html", 
+    return render_template("html/watch.html", 
                            videoId = video_id, 
                            nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], nb_views = nb_views,
                            name = author_username,
@@ -363,7 +361,7 @@ def upload_pfp():
                 return redirect(url_for('home'))
             else :
                 flash('The file should be a png.')
-        return render_template("upload_pfp.html",
+        return render_template("html/upload_pfp.html",
                                connected = "user" in session)
     return redirect(url_for('home'))
 
@@ -393,11 +391,11 @@ def update_channel():
                     flash(f"Update on {new_channel_url} successful !")
                 else :
                     flash("You are not logged in with the right account : your server does not return your username.")
-                    return render_template("update_channel.html",
+                    return render_template("html/update_channel.html",
                                            connected = "user" in session)
             else:
                 flash(f"channel_info_resp.status_code == {channel_info_resp.status_code}")
-        return render_template("update_channel.html",
+        return render_template("html/update_channel.html",
                                connected = "user" in session)
     return redirect(url_for('login'))
 
