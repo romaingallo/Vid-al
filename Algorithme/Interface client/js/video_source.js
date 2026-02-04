@@ -11,12 +11,10 @@ let dash_url = '';
 if (videoId !== '') {
     hls_url = `${hostURLSource}/video/${videoId}/playlist.m3u8`
     dash_url = `${hostURLSource}/video/${videoId}/manifest.mpd`
-    const sourceElement = document.createElement('source');
-    // sourceElement.src = `${hostURLSource}/video/dash/${videoId}`;
-    // sourceElement.type = 'video/mp4';
-    sourceElement.src = dash_url;
-    sourceElement.type = 'application/dash+xml';
-    videoElement.appendChild(sourceElement);
+    // const sourceElement = document.createElement('source');
+    // sourceElement.src = dash_url;
+    // sourceElement.type = 'application/dash+xml';
+    // videoElement.appendChild(sourceElement);
 } else {
     console.warn('Aucun paramètre video dans l\'URL');
 }
