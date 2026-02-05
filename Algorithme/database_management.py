@@ -316,18 +316,24 @@ conn.autocommit = True
 #                 )
 #         ;""", ['Walter White', 'Madeline'])
 # get list of followed channels
-cur.execute("""SELECT u.username 
-            FROM users u 
-            WHERE u.user_pk IN ( 
-                SELECT if.followed_pk 
-                FROM is_following if 
-                WHERE if.follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
-            )
+# cur.execute("""SELECT u.username 
+#             FROM users u 
+#             WHERE u.user_pk IN ( 
+#                 SELECT if.followed_pk 
+#                 FROM is_following if 
+#                 WHERE if.follower_pk = (SELECT user_pk FROM users WHERE username = %s) 
+#             )
+#             ;""", ['One'])
+
+# Get settings for algo
+cur.execute("""SELECT setting_like_scale, setting_view_scale
+            FROM users
+            WHERE username = %s
             ;""", ['One'])
 
 
-print(cur.fetchall())
-# print(cur.fetchone())
+# print(cur.fetchall())
+print(cur.fetchone())
 
 cur.close()
 conn.close()

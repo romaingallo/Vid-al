@@ -37,8 +37,15 @@ def close_connection(cur, conn):
 
 #     return convert_sql_output_to_list_for_card(result)
 
-def get_videos(like_scale, view_scale, limit, offset):
+def get_videos(username, limit, offset):
     cur, conn = connection()
+    like_scale, view_scale = 1, 0.1
+    if username :
+        cur.execute("""SELECT setting_like_scale, setting_view_scale
+            FROM users
+            WHERE username = %s
+            ;""", [username])
+        like_scale, view_scale = cur.fetchone()
     cur.execute("""
         SELECT v.videourl,
                u.username,

@@ -85,10 +85,11 @@ def logout():
 
 @app.route('/api/videos/<offset>')
 def videos(offset):
-    like_scale = 1
     NUMBER_OF_VIDEO_PER_FETCH = 6
-    view_scale = 0.1
-    data = get_videos(like_scale, view_scale, NUMBER_OF_VIDEO_PER_FETCH, offset)
+    if "user" in session: 
+        data = get_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, offset)
+    else:
+        data = get_videos(False, NUMBER_OF_VIDEO_PER_FETCH, offset)
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>/<offset>')
