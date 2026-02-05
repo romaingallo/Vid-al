@@ -572,6 +572,29 @@ def get_list_of_followed_channels(follower_username):
     close_connection(cur, conn)
     return [tuple[0] for tuple in result]
 
+def update_user_setting(setting_name, value, username):
+    try:
+        request = f"""UPDATE users
+                SET {setting_name} = {value}
+                WHERE username = '{username}'
+                ;"""
+        cur, conn = connection()
+        cur.execute(request)
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
+def get_user_setting(username):
+    cur, conn = connection()
+    cur.execute("""SELECT setting_like_scale, setting_view_scale
+                FROM users
+                WHERE username = %s
+                ;""", [username])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    return [setting for setting in result]
+
 if __name__ == "__main__" :
     # print(get_comments_of_video("Bird"))
     # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
@@ -581,4 +604,6 @@ if __name__ == "__main__" :
     # print(get_followed_videos("One", 6, 0))
     # print(get_if_follow_channel('Walter White', 'Madeline'))
     # print(toggle_following_channel('Walter White', 'Madeline'))
-    print(get_list_of_followed_channels('One'))
+    # print(get_list_of_followed_channels('One'))
+    # print(update_user_setting("setting_like_scale", 1, "One"))
+    print(get_user_setting("One"))

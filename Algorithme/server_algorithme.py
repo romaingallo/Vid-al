@@ -400,6 +400,26 @@ def update_channel():
                                connected = "user" in session)
     return redirect(url_for('login'))
 
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if "user" in session : 
+        if request.method == 'POST':
+            new_like_scale = request.form.get('new_like_scale')
+            if new_like_scale :
+                if update_user_setting("setting_like_scale", new_like_scale, session["user"]):
+                    return '', 200
+                return jsonify({"error": 'Update failed.'}), 500
+            new_view_scale = request.form.get('new_view_scale')
+            if new_view_scale :
+                if update_user_setting("setting_view_scale", new_view_scale, session["user"]):
+                    return '', 200
+                return jsonify({"error": 'Update failed.'}), 500
+        
+        list_settings = get_user_setting(session["user"])
+        return render_template("html/settings.html",
+                               list_settings = list_settings)
+    return jsonify({"error": 'Unauthenticated user'}), 401
+
 if __name__ == '__main__':
     # app.run(host='127.0.0.1', port=5000, debug=True)
     app.run(host='0.0.0.0', port=5000, debug=True)

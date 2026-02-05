@@ -1,0 +1,61 @@
+{% extends 'html/base.html' %}
+{% block title %}
+    <title>Vidéal - Settings</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/github_style.css">
+    <link rel="stylesheet" href="/css/settings.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
+    <div>
+        <h1>Algorithm settings :</h1>
+        <div>
+            Like scale : 
+            <input id="likescaleinput"
+                    onkeyup="unlock_save(document.getElementById('likescalebutton'))"
+                    type="text"
+                    value="{{list_settings[0]}}"
+                    >
+            <button 
+                id="likescalebutton" 
+                onclick="save_setting(
+                    document.getElementById('likescaleinput'),
+                    this, 
+                    document.getElementById('likescalealert'),
+                    'new_like_scale',
+                    document.getElementById('likescalesuccess')
+                    )" 
+                class="githubbutton" 
+                disabled>
+                Save.
+            </button>
+            <span id="likescalealert" class="alert"></span>
+            <span id="likescalesuccess" class="success"></span>
+        </div>
+        <div>
+            View scale : 
+            <input id="viewscaleinput"
+                    onkeyup="unlock_save(document.getElementById('viewscalebutton'))"
+                    type="text"
+                    value="{{list_settings[1]}}"
+                    >
+            <button 
+                id="viewscalebutton" 
+                onclick="save_setting(
+                    document.getElementById('viewscaleinput'),
+                    this, 
+                    document.getElementById('viewscalealert'),
+                    'new_view_scale',
+                    document.getElementById('viewscalesuccess')
+                    )" 
+                class="githubbutton" 
+                disabled>
+                Save.
+            </button>
+            <span id="viewscalealert" class="alert"></span>
+            <span id="viewscalesuccess" class="success"></span>
+        </div>
+    </div>
+
+    <script src="/js/settings.js"></script>
+{% endblock %}

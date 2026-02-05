@@ -330,6 +330,12 @@ cur.execute("""SELECT setting_like_scale, setting_view_scale
             FROM users
             WHERE username = %s
             ;""", ['One'])
+# Update settings for algo
+# request = f"""UPDATE users
+#         SET {"setting_like_scale"} = {1}
+#         WHERE username = '{'One'}'
+#         ;"""
+# cur.execute(request)
 
 
 # print(cur.fetchall())

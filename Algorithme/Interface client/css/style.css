@@ -37,10 +37,21 @@
 
 .notif {
     position: absolute;
-    right: 60px;
+    right: 110px;
 }
 
 .notiflogo {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+.settings {
+    position: absolute;
+    right: 60px;
+}
+
+.settingslogo {
     width: 40px;
     height: 40px;
     object-fit: cover;
