@@ -3,6 +3,7 @@ from psycopg2 import sql
 import hashlib
 from time import sleep
 from utils import *
+import config
 
 def connection():
     conn = psycopg2.connect(
@@ -10,7 +11,7 @@ def connection():
             host = "localhost",
             port = 5432,
             user = "postgres",
-            password = "0108"
+            password = config.database_password
             )
 
     cur = conn.cursor()

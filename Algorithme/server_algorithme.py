@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, send_file, redirect, url_for, session, render_template, flash
 from flask_cors import CORS
 from database_requests import *
+import config
 import os
 from datetime import timedelta
 from werkzeug.utils import secure_filename
@@ -422,4 +423,7 @@ def settings():
 
 if __name__ == '__main__':
     # app.run(host='127.0.0.1', port=5000, debug=True)
+    print("Enter the database password : ")
+    config.database_password = input()
+
     app.run(host='0.0.0.0', port=5000, debug=True)
