@@ -326,7 +326,7 @@ conn.autocommit = True
 #             ;""", ['One'])
 
 # Get settings for algo
-cur.execute("""SELECT setting_like_scale, setting_view_scale
+cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
             FROM users
             WHERE username = %s
             ;""", ['One'])
@@ -336,10 +336,99 @@ cur.execute("""SELECT setting_like_scale, setting_view_scale
 #         WHERE username = '{'One'}'
 #         ;"""
 # cur.execute(request)
+# Get tags for algo
+# cur.execute("""SELECT tags
+#             FROM follow_tags f
+#             JOIN users u ON u.user_pk = f.user_pk
+#             WHERE u.username = %s
+#             ;""", ['One'])
+# tests with get videos with tags
+# like_scale, view_scale, limit, offset = 1, 0.1, 12, 0
+# get_tag_settings = '''LEFT JOIN(
+#                 SELECT videourl, COUNT(tcc.tags) AS nb_tags
+#                  FROM has_tag ht 
+#                  INNER JOIN (
+#                          SELECT f.tags
+#                          FROM follow_tags f
+#                          JOIN users u ON u.user_pk = f.user_pk
+#                          WHERE u.username = 'One'
+#                  ) tcc ON ht.tags = tcc.tags
+#                  GROUP BY videourl
+#         ) tc ON tc.videourl = v.videourl'''
+# use_tag_settings = '+ 10 * COALESCE(nb_tags, 0)'
+# request = f"""
+# SELECT v.videourl,
+#                u.username,
+#                COALESCE(lc.nb_likes, 0)    AS nb_likes,
+#                COALESCE(vc.nb_views, 0)    AS nb_views,
+#                u.channel_url               AS channel_url,
+#                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
+#                v.is_hidden,
+#         FROM videos v
+#         JOIN users u ON v.user_pk = u.user_pk 
+#         LEFT JOIN (
+#             SELECT videourl,
+#                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+#                    COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+#             FROM has_been_liked_by
+#             GROUP BY videourl
+#         ) lc ON lc.videourl = v.videourl
+#         LEFT JOIN (
+#             SELECT videourl, COUNT(*) AS nb_views
+#             FROM has_been_viewed_by
+#             GROUP BY videourl
+#         ) vc ON vc.videourl = v.videourl
+#         {get_tag_settings}
+#         WHERE v.is_hidden = False
+#         ORDER BY (
+#             %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) ) {use_tag_settings}
+#         ) DESC
+#         LIMIT %s OFFSET %s
+#         ;"""
+# cur.execute(request, [like_scale, view_scale, limit, offset])
+# cur.execute("""SELECT COUNT(tags)
+#             FROM follow_tags f
+#             JOIN users u ON u.user_pk = f.user_pk
+#             WHERE u.username = %s
+#             ;""", ['One'])
+# cur.execute("""SELECT v.videourl, nb_tags
+#             FROM videos v
+#             LEFT JOIN (
+#                 SELECT videourl, COUNT(tags) AS nb_tags
+#                 FROM has_tag ht 
+#                 GROUP BY videourl
+#             ) tc ON tc.videourl = v.videourl
+#             ;""", [])
+# cur.execute("""SELECT v.videourl, nb_tags
+#             FROM videos v
+#             LEFT JOIN (
+#                 SELECT videourl, COUNT(tcc.tags) AS nb_tags
+#                 FROM has_tag ht 
+#                 INNER JOIN (
+#                         SELECT f.tags
+#                         FROM follow_tags f
+#                         JOIN users u ON u.user_pk = f.user_pk
+#                         WHERE u.username = 'One'
+#                 ) tcc ON ht.tags = tcc.tags
+#                 GROUP BY videourl
+#             ) tc ON tc.videourl = v.videourl
+#             ;""", [])
+# cur.execute("""SELECT videourl, COUNT(tcc.tags) AS nb_tags
+#                 FROM has_tag ht 
+#                 INNER JOIN (
+#                         SELECT f.tags
+#                         FROM follow_tags f
+#                         JOIN users u ON u.user_pk = f.user_pk
+#                         WHERE u.username = 'One'
+#                 ) tcc ON ht.tags = tcc.tags
+#                 GROUP BY videourl
+#             ;""", [])
 
 
-# print(cur.fetchall())
-print(cur.fetchone())
+
+res = cur.fetchall()
+for r in res : print(r)
+# print(cur.fetchone())
 
 cur.close()
 conn.close()

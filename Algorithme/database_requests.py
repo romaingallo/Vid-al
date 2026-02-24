@@ -40,15 +40,26 @@ def close_connection(cur, conn):
 
 def get_videos(username, limit, offset):
     cur, conn = connection()
-    like_scale, view_scale = 1, 0.1
+    like_scale, view_scale, get_tag_settings, use_tag_settings = 1, 0.1, '', ''
     if username :
-        cur.execute("""SELECT setting_like_scale, setting_view_scale
+        cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
             FROM users
             WHERE username = %s
             ;""", [username])
-        like_scale, view_scale = cur.fetchone()
-    cur.execute("""
-        SELECT v.videourl,
+        like_scale, view_scale, tags_scale = cur.fetchone()
+        get_tag_settings = f'''LEFT JOIN(
+                    SELECT videourl, COUNT(tcc.tags) AS nb_tags
+                    FROM has_tag ht 
+                    INNER JOIN (
+                            SELECT f.tags
+                            FROM follow_tags f
+                            JOIN users u ON u.user_pk = f.user_pk
+                            WHERE u.username = '{username}'
+                    ) tcc ON ht.tags = tcc.tags
+                    GROUP BY videourl
+            ) tc ON tc.videourl = v.videourl'''
+        use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
+    request = f'''SELECT v.videourl,
                u.username,
                COALESCE(lc.nb_likes, 0)    AS nb_likes,
                COALESCE(vc.nb_views, 0)    AS nb_views,
@@ -56,7 +67,7 @@ def get_videos(username, limit, offset):
                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
                v.is_hidden
         FROM videos v
-        JOIN users u ON v.user_pk = u.user_pk
+        JOIN users u ON v.user_pk = u.user_pk 
         LEFT JOIN (
             SELECT videourl,
                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
@@ -69,12 +80,14 @@ def get_videos(username, limit, offset):
             FROM has_been_viewed_by
             GROUP BY videourl
         ) vc ON vc.videourl = v.videourl
+        {get_tag_settings}
         WHERE v.is_hidden = False
         ORDER BY (
-            %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) )
+            %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) ) {use_tag_settings}
         ) DESC
         LIMIT %s OFFSET %s
-        ;""", [like_scale, view_scale, limit, offset])
+        ;'''
+    cur.execute(request, [like_scale, view_scale, limit, offset])
     result = cur.fetchall()
     close_connection(cur, conn)
 
@@ -588,7 +601,7 @@ def update_user_setting(setting_name, value, username):
 
 def get_user_setting(username):
     cur, conn = connection()
-    cur.execute("""SELECT setting_like_scale, setting_view_scale
+    cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
                 FROM users
                 WHERE username = %s
                 ;""", [username])
@@ -596,7 +609,60 @@ def get_user_setting(username):
     close_connection(cur, conn)
     return [setting for setting in result]
 
+def get_user_followed_tags(username):
+    cur, conn = connection()
+    cur.execute("""SELECT tags
+            FROM follow_tags f
+            JOIN users u ON u.user_pk = f.user_pk
+            WHERE u.username = %s
+            ;""", [username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    return [tag[0] for tag in result]
+
+def remove_followed_tag_from_user(tag_name, username):
+    try:
+        cur, conn = connection()
+        cur.execute("""DELETE FROM follow_tags f
+            USINg users u
+            WHERE u.user_pk = f.user_pk AND u.username = %s AND f.tags = %s
+            ;""", [username, tag_name])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
+def add_tag_for_user_followed(tag_name, username):
+    try:
+        cur, conn = connection()
+        cur.execute("""SELECT user_pk
+            FROM users
+            WHERE username = %s
+        ;""", [username])
+        user_pk = cur.fetchone()
+        print(user_pk)
+        if len(user_pk) == 0 : return False
+        user_pk = user_pk[0]
+        print(user_pk)
+        cur.execute("""WITH new_tag AS (
+                    INSERT INTO tags (tags)
+                    VALUES (%s)
+                    ON CONFLICT (tags) DO NOTHING
+                    RETURNING tags
+                )
+                INSERT INTO follow_tags (user_pk, tags)
+                SELECT %s, tags FROM new_tag
+                UNION ALL
+                SELECT %s, tags FROM tags WHERE tags = %s
+                ;""", [tag_name, user_pk, user_pk, tag_name])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
 if __name__ == "__main__" :
+    print("Enter the database password : ")
+    config.database_password = input()
     # print(get_comments_of_video("Bird"))
     # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
     # print(update_comment_from_pk(5, "It must fly so fast !!!"))
@@ -607,4 +673,7 @@ if __name__ == "__main__" :
     # print(toggle_following_channel('Walter White', 'Madeline'))
     # print(get_list_of_followed_channels('One'))
     # print(update_user_setting("setting_like_scale", 1, "One"))
-    print(get_user_setting("One"))
+    # print(get_user_setting("One"))
+    # print(get_user_followed_tags("One"))
+    # print(remove_followed_tag_from_user('VLOG', 'One'))
+    print(add_tag_for_user_followed('pyhon', 'One'))

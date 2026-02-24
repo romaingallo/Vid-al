@@ -415,11 +415,44 @@ def settings():
                 if update_user_setting("setting_view_scale", new_view_scale, session["user"]):
                     return '', 200
                 return jsonify({"error": 'Update failed.'}), 500
+            new_tag_scale = request.form.get('new_tag_scale')
+            if new_tag_scale :
+                if update_user_setting("setting_tags_scale", new_tag_scale, session["user"]):
+                    return '', 200
+                return jsonify({"error": 'Update failed.'}), 500
         
         list_settings = get_user_setting(session["user"])
+        list_tags     = get_user_followed_tags(session["user"])
         return render_template("html/settings.html",
-                               list_settings = list_settings)
+                               list_settings = list_settings,
+                               list_tags = list_tags)
     return jsonify({"error": 'Unauthenticated user'}), 401
+
+@app.route('/api/settings/remove_followed_tag', methods=['POST'])
+def remove_followed_tag():
+    if request.method == 'POST':
+        if "user" in session: 
+            tag_name = request.form.get('tag_name')
+            if remove_followed_tag_from_user(tag_name, session["user"]):
+                return '', 200
+            else : return jsonify({"error": f'Internal error when deletion of tag {tag_name}'}), 500
+        else:
+            return jsonify({"error": 'User Unauthorized'}), 401
+    return '', 400
+
+@app.route('/api/settings/add_user_followed_tag', methods=['POST'])
+def add_user_followed_tag():
+    if request.method == 'POST':
+        if "user" in session: 
+            tag_name = request.form.get('tag_name')
+            list_followed_tags = get_user_followed_tags(session["user"])
+            if tag_name in list_followed_tags: return jsonify({"error": f'You are already following the tag {tag_name}.'}), 500
+            if add_tag_for_user_followed(tag_name, session["user"]):
+                return '', 200
+            else : return jsonify({"error": f'Internal error when adding tag {tag_name}'}), 500
+        else:
+            return jsonify({"error": 'User Unauthorized'}), 401
+    return '', 400
 
 if __name__ == '__main__':
     # app.run(host='127.0.0.1', port=5000, debug=True)

@@ -55,6 +55,47 @@
             <span id="viewscalealert" class="alert"></span>
             <span id="viewscalesuccess" class="success"></span>
         </div>
+        <div>
+            Tag scale : 
+            <input id="tagscaleinput"
+                    onkeyup="unlock_save(document.getElementById('tagscalebutton'))"
+                    type="text"
+                    value="{{list_settings[2]}}"
+                    >
+            <button 
+                id="tagscalebutton" 
+                onclick="save_setting(
+                    document.getElementById('tagscaleinput'),
+                    this, 
+                    document.getElementById('tagscalealert'),
+                    'new_tag_scale',
+                    document.getElementById('tagscalesuccess')
+                    )" 
+                class="githubbutton" 
+                disabled>
+                Save.
+            </button>
+            <span id="tagscalealert" class="alert"></span>
+            <span id="tagscalesuccess" class="success"></span>
+        </div>
+        <div class="settingblock">
+            List of followed tags :
+            <ul class="taglist" id="taglist">
+                {% for tag in list_tags %}
+                <li class="taglistelement" id="{{tag}}">{{tag}}<img src="/images/close_cross.svg" class="imgbuttonicon" alt="X" onclick="remove_tag('{{tag}}')"></li>
+                {%endfor%}
+            </ul>
+        </div>
+        <div class="settingblock">
+            <input id="searchtagbar" 
+               onkeyup="search_tag()" 
+               type="text" name="search" 
+               placeholder="Search a tag">
+            <div>
+                <ul id="searchtagsresults">
+                </ul>
+            </div>
+        </div>
     </div>
 
     <script src="/js/settings.js"></script>
