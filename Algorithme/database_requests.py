@@ -588,12 +588,14 @@ def get_list_of_followed_channels(follower_username):
 
 def update_user_setting(setting_name, value, username):
     try:
-        request = f"""UPDATE users
-                SET {setting_name} = {value}
-                WHERE username = '{username}'
-                ;"""
         cur, conn = connection()
-        cur.execute(request)
+        query = sql.SQL("""UPDATE users
+                SET {col} = %s
+                WHERE username = %s
+                ;""").format(
+            col=sql.Identifier(setting_name)
+        )
+        cur.execute(query, [value, username])
         close_connection(cur, conn)
         return True
     except:
@@ -672,8 +674,8 @@ if __name__ == "__main__" :
     # print(get_if_follow_channel('Walter White', 'Madeline'))
     # print(toggle_following_channel('Walter White', 'Madeline'))
     # print(get_list_of_followed_channels('One'))
-    # print(update_user_setting("setting_like_scale", 1, "One"))
+    print(update_user_setting("setting_like_scale", 10, "One"))
     # print(get_user_setting("One"))
     # print(get_user_followed_tags("One"))
     # print(remove_followed_tag_from_user('VLOG', 'One'))
-    print(add_tag_for_user_followed('pyhon', 'One'))
+    # print(add_tag_for_user_followed('pyhon', 'One'))

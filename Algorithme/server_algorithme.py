@@ -66,9 +66,13 @@ def register():
         elif len(get_user_by_name(username_input)) > 0 :
             flash("Username already taken.")
             return redirect(url_for('register'))
+        elif secure_filename(username_input) != username_input :
+            flash("Username contains wrong characters.")
+            return redirect(url_for('register'))
         else : # adding user + session
             add_new_user(username_input, password_input)
             flash("User created, you can now log in.")
+            print("New user created : ", username_input)
             return redirect(url_for('login'))
             # session["user"] = request.form["usrname"]
             # session.permanent = True
@@ -86,6 +90,7 @@ def logout():
 
 @app.route('/api/videos/<offset>')
 def videos(offset):
+    if not offset.isnumeric() : return '', 400
     NUMBER_OF_VIDEO_PER_FETCH = 6
     if "user" in session: 
         data = get_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, offset)
@@ -95,6 +100,7 @@ def videos(offset):
 
 @app.route('/api/channel/<channelId>/<offset>')
 def channel(channelId, offset):
+    if not offset.isnumeric() : return '', 400
     NUMBER_OF_VIDEO_PER_FETCH = 6
     data = get_all_videos_from_channel(channelId, NUMBER_OF_VIDEO_PER_FETCH, offset)
     return jsonify(data)
@@ -131,6 +137,7 @@ def deletecomment():
     if request.method == 'POST':
         if "user" in session: 
             comment_id = request.form.get('comment_id')
+            if not comment_id : return '', 400
             if is_comment_from(comment_id, session["user"]):
                 remove_comment_from_pk(comment_id)
                 return '', 200
@@ -178,6 +185,7 @@ def pfp():
     
 @app.route('/pfp_of/<username>')
 def pfp_of(username):
+    username = secure_filename(username)
     images_dir = os.path.join(current_dir, 'Interface client', 'images', 'profile_pictures')
     pfp_path = os.path.join(images_dir, f'{username}.png')
     minetype = 'image/png'
@@ -260,6 +268,7 @@ def toggle_is_hidden():
     if request.method == 'POST':
         if "user" in session: 
             video_id = request.form.get('video_id')
+            if not video_id : return '', 400
             if is_video_from(video_id, session["user"]):
                 if toggle_is_hidden_of(video_id):
                     return '', 200
@@ -274,8 +283,10 @@ def remove_tag():
     if request.method == 'POST':
         if "user" in session: 
             video_id = request.form.get('video_id')
+            if not video_id : return '', 400
             if is_video_from(video_id, session["user"]):
                 tag_name = request.form.get('tag_name')
+                if not tag_name : return '', 400
                 if remove_tag_from_video(tag_name, video_id):
                     return '', 200
                 else : return jsonify({"error": f'Internal error when deletion of tag {tag_name}'}), 500
@@ -289,10 +300,12 @@ def add_tag():
     if request.method == 'POST':
         if "user" in session: 
             video_id = request.form.get('video_id')
+            if not video_id : return '', 400
             if is_video_from(video_id, session["user"]):
                 list_tags_on_video = get_tags_of_video(video_id)
                 if len(list_tags_on_video)+1 > MAX_TAG_NUMBER_ON_VIDEO: return jsonify({"error": f'The video has already been tagged {MAX_TAG_NUMBER_ON_VIDEO} times (max per video).'}), 500
                 tag_name = request.form.get('tag_name')
+                if not tag_name : return '', 400
                 if tag_name in list_tags_on_video: return jsonify({"error": f'The video has already been tagged {tag_name}.'}), 500
                 if add_tag_on_video(video_id, tag_name):
                     return '', 200
@@ -306,6 +319,7 @@ def add_tag():
 def search_for_tag():
     if request.method == 'POST':
         tag_searched = request.form.get('tag_searched')
+        if not tag_searched : return '', 400
         tag_list = search_for_tag_request(tag_searched)
         return json.dumps(tag_list), 200
     return '', 400
@@ -406,16 +420,19 @@ def settings():
     if "user" in session : 
         if request.method == 'POST':
             new_like_scale = request.form.get('new_like_scale')
+            if not new_like_scale : return '', 400
             if new_like_scale :
                 if update_user_setting("setting_like_scale", new_like_scale, session["user"]):
                     return '', 200
                 return jsonify({"error": 'Update failed.'}), 500
             new_view_scale = request.form.get('new_view_scale')
+            if not new_view_scale : return '', 400
             if new_view_scale :
                 if update_user_setting("setting_view_scale", new_view_scale, session["user"]):
                     return '', 200
                 return jsonify({"error": 'Update failed.'}), 500
             new_tag_scale = request.form.get('new_tag_scale')
+            if not new_tag_scale : return '', 400
             if new_tag_scale :
                 if update_user_setting("setting_tags_scale", new_tag_scale, session["user"]):
                     return '', 200
@@ -433,6 +450,7 @@ def remove_followed_tag():
     if request.method == 'POST':
         if "user" in session: 
             tag_name = request.form.get('tag_name')
+            if not tag_name : return '', 400
             if remove_followed_tag_from_user(tag_name, session["user"]):
                 return '', 200
             else : return jsonify({"error": f'Internal error when deletion of tag {tag_name}'}), 500
@@ -445,6 +463,7 @@ def add_user_followed_tag():
     if request.method == 'POST':
         if "user" in session: 
             tag_name = request.form.get('tag_name')
+            if not tag_name : return '', 400
             list_followed_tags = get_user_followed_tags(session["user"])
             if tag_name in list_followed_tags: return jsonify({"error": f'You are already following the tag {tag_name}.'}), 500
             if add_tag_for_user_followed(tag_name, session["user"]):
