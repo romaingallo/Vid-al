@@ -15,6 +15,16 @@
     <main id="contentwatch" class="contentwatch">
 
         <div class="videopanel">
+            {% if is_youtube_video %}
+            <iframe
+                width="640"
+                height="360"
+                src="https://www.youtube.com/embed/{{ videoId }}"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+            </iframe>
+            {% else %}
             <video 
                 id="video" 
                 controls 
@@ -24,10 +34,11 @@
                 height="360"
             >
             </video>
+            {% endif %}
             <div class="info">
                 <div><a id="title" class="title">Titre de la vidéo exemple #xxx</a></div>
                 <div>
-                    <a href="/visit_channel/{{name}}"> <img class="pfpwatch" src="/pfp_of/{{name}}" alt="${{name}} pfp"></a>
+                    <a id="channel_link" href="/visit_channel/{{name}}"> <img id="pfp" class="pfpwatch" src="/pfp_of/{{name}}" alt="{{name}} pfp"></a>
                     <a id="sub" class="subtitle" href="/visit_channel/{{name}}">{{name}} • {{nb_views}} vues • xxx jours</a>
                     {% if connected %}
                         <div class="actions">
@@ -87,7 +98,11 @@
             const videoId = '{{videoId}}';
             const hostURLSource = '{{hostURL}}';
          </script>
-    <script src="/js/video_source.js"></script>
+    {% if is_youtube_video %}
+        <script src="/js/youtube_video_metadata_source.js"></script>
+    {% else %}
+        <script src="/js/video_source.js"></script>
+    {% endif %}
     <script src="/js/script.js"></script>
     <script src="/js/watch_reaction.js"></script>
     <script src="/js/deletecommentbutton.js"></script>

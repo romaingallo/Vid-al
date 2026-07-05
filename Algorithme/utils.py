@@ -13,7 +13,8 @@ def convert_sql_output_to_list_for_card(data_input):
                             "likes": f"{video_data[2]}", 
                             "url": video_data[0], 
                             "hostURL":video_data[4], 
-                            "is_hidden":video_data[6]})
+                            "is_hidden":video_data[6],
+                            "is_youtube_video":video_data[7]})
     return data_output
 
 

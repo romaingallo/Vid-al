@@ -69,17 +69,43 @@ async function loadTitleFromHost(videoId, hostURL) {
     }
 }
 
+async function loadDataFromYoutube(videoId) {
+    try {
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`); // changer l'URL si besoin
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return data;
+    } catch (err) {
+        console.error('Échec de chargement des metadonnées:', err);
+    }
+}
+
 
 const thumbPath = './images/miniatures/miniature0.jpg';
 async function createCard(i, data = null) {
+    const is_youtube_video = data?.is_youtube_video ?? `false`;
+    let is_youtube_video_text = ``;
+    let thumb = `${data?.hostURL}/thumbnail/${data?.url}`;
+    let channel = data?.channel ?? 'Chaîne';
+    let title = `Loading title ?`;
+    let channelurl = `/visit_channel/${channel}`;
+    if (is_youtube_video == true) 
+        {
+            is_youtube_video_text = " • youtube";
+            thumb = `https://i.ytimg.com/vi/${data?.url}/hqdefault.jpg`;
+            const data_from_youtube = await loadDataFromYoutube(data?.url);
+            title = data_from_youtube?.title ?? `Erreur de titre`;
+            channel = data_from_youtube?.author_name ?? `Erreur de nom`;
+            channelurl = data_from_youtube?.author_url ?? ``;
+        }
+    else
+    {
+        title = await loadTitleFromHost(data?.url, data?.hostURL) ?? `Erreur de titre`;
+    }
     const url = `/watch/${data?.url ?? ``}`;
-    const channel = data?.channel ?? 'Chaîne';
-    const title = await loadTitleFromHost(data?.url, data?.hostURL) ?? `Erreur de titre`;
-    const channelurl = `/visit_channel/${channel}`;
     const editvideourl = `/edit/${channel}/${data?.url ?? ``}`;
     const views = data?.views ?? `${Math.floor(Math.random()*5+1)}k`;
     const likes = data?.likes ?? `${Math.floor(Math.random()*10)+1} jours`;
-    const thumb = `${data?.hostURL}/thumbnail/${data?.url}`;
     const is_hidden = data?.is_hidden ?? `false`;
     let is_hidden_class = ``;
     if (is_hidden){is_hidden_class = " is_hidden"}
@@ -92,7 +118,7 @@ async function createCard(i, data = null) {
                 <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                 <div class="info">
                     <div><a class="title" href="${url}">${title}</a></div>
-                    <div><a class="sub" href="${channelurl}">${channel} • ${views} vues • ${likes} likes</a></div>
+                    <div><a class="sub" href="${channelurl}">${channel} • ${views} vues • ${likes} likes${is_youtube_video_text}</a></div>
                 </div>
             </div>
         `;

@@ -326,6 +326,10 @@ def search_for_tag():
 
 @app.route('/watch/<video_id>', methods=['GET', 'POST'])
 def watch(video_id):
+    if not is_video_in_db(video_id) : return redirect(url_for('home'))
+
+    is_youtube_video = get_is_youtube_video(video_id)
+    print(is_youtube_video)
     if request.method == 'POST':
         # print(request.form["cmmnt"])
         if "user" in session:
@@ -333,14 +337,22 @@ def watch(video_id):
         else:
             print("Error : tried to post comment without being connected")
         
-    author_username, host_url, _ = get_author_info_from_video(video_id)
-    reaction_result = get_reactions_on_video(video_id)
-    nb_views = get_video_views(video_id)
-    comments = get_comments_of_video(video_id)
-    if nb_views == False : nb_views = 0
+    username = ''
     green_state = 'green0'
     red_state   = 'red0'
-    username = ''
+    if not is_youtube_video:
+        author_username, host_url, _ = get_author_info_from_video(video_id)
+        reaction_result = get_reactions_on_video(video_id)
+        nb_views = get_video_views(video_id)
+        comments = get_comments_of_video(video_id)
+        is_following = get_if_follow_channel(username, author_username)
+        if nb_views == False : nb_views = 0
+    else :
+        author_username, host_url = "author_username", "host_url"
+        reaction_result = {"likes" : "likes", "dislikes" : "dislikes"}
+        nb_views = "nb_views"
+        comments = []
+        is_following = False
     if "user" in session: 
         username = session["user"]
         add_view(username, video_id)
@@ -354,7 +366,8 @@ def watch(video_id):
                            green_state = green_state, red_state = red_state,
                            hostURL = host_url,
                            comments = comments, lencomments = len(comments), connected = "user" in session, username = username,
-                           is_following = get_if_follow_channel(username, author_username))
+                           is_following = is_following,
+                           is_youtube_video = is_youtube_video)
 
 @app.route('/upload_pfp', methods=['GET', 'POST'])
 def upload_pfp():

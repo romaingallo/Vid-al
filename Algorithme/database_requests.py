@@ -54,20 +54,21 @@ def get_videos(username, limit, offset):
                             SELECT f.tags
                             FROM follow_tags f
                             JOIN users u ON u.user_pk = f.user_pk
-                            WHERE u.username = '{username}'
+                            WHERE username = '{username}'
                     ) tcc ON ht.tags = tcc.tags
                     GROUP BY videourl
             ) tc ON tc.videourl = v.videourl'''
         use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
     request = f'''SELECT v.videourl,
-               u.username,
-               COALESCE(lc.nb_likes, 0)    AS nb_likes,
-               COALESCE(vc.nb_views, 0)    AS nb_views,
-               u.channel_url               AS channel_url,
-               COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
-               v.is_hidden
+               COALESCE(u.username, 'UnknownFromYoutube') AS username,
+               COALESCE(lc.nb_likes, 0)     AS nb_likes,
+               COALESCE(vc.nb_views, 0)     AS nb_views,
+               COALESCE(u.channel_url, '')  AS channel_url,
+               COALESCE(lc.nb_dislikes, 0)  AS nb_dislikes,
+               v.is_hidden, 
+               v.is_youtube_video
         FROM videos v
-        JOIN users u ON v.user_pk = u.user_pk 
+        LEFT JOIN users u ON v.user_pk = u.user_pk 
         LEFT JOIN (
             SELECT videourl,
                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
@@ -662,6 +663,26 @@ def add_tag_for_user_followed(tag_name, username):
     except:
         return False
 
+def get_is_youtube_video(video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT v.is_youtube_video
+            FROM videos v
+            WHERE v.videourl = %s
+        ;""", [video_id])
+    res = cur.fetchone()[0]
+    close_connection(cur, conn)
+    return res
+
+def is_video_in_db(video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT v.is_youtube_video
+            FROM videos v
+            WHERE v.videourl = %s
+        ;""", [video_id])
+    res = cur.fetchone()
+    close_connection(cur, conn)
+    return res != None
+
 if __name__ == "__main__" :
     print("Enter the database password : ")
     config.database_password = input()
@@ -674,8 +695,9 @@ if __name__ == "__main__" :
     # print(get_if_follow_channel('Walter White', 'Madeline'))
     # print(toggle_following_channel('Walter White', 'Madeline'))
     # print(get_list_of_followed_channels('One'))
-    print(update_user_setting("setting_like_scale", 10, "One"))
+    # print(update_user_setting("setting_like_scale", 10, "One"))
     # print(get_user_setting("One"))
     # print(get_user_followed_tags("One"))
     # print(remove_followed_tag_from_user('VLOG', 'One'))
     # print(add_tag_for_user_followed('pyhon', 'One'))
+    [print(vid) for vid in get_videos(False, 15, 0)]
