@@ -1,0 +1,25 @@
+{% extends 'html/base.html' %}
+{% block title %}
+    <title>Add youtube video</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style_watch.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
+<h1>Add youtube video from video id</h1>
+<form method=post>
+    <input type="text" name="youtubevideoid"><br>
+    <input type="submit" value="Add video">
+</form>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class=flashes>
+        {% for message in messages %}
+            <span>{{ message }}</span>
+        {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% endblock %}

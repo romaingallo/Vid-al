@@ -150,9 +150,11 @@ def deletecomment():
 def pfp():
     if "user" in session:
         images_dir = os.path.join(current_dir, 'Interface client', 'images', 'profile_pictures')
-        pfp_path = os.path.join(images_dir, f'{session["user"]}.png')
-
-        minetype = 'image/png'
+        pfp_path = os.path.join(images_dir, f'{session["user"]}.jpg')
+        minetype = 'image/jpeg'
+        if not os.path.exists(pfp_path):
+            pfp_path = os.path.join(images_dir, f'{session["user"]}.png')
+            minetype = 'image/png'
 
         # Vérifier si le fichier existe
         if not os.path.exists(pfp_path):
@@ -187,8 +189,11 @@ def pfp():
 def pfp_of(username):
     username = secure_filename(username)
     images_dir = os.path.join(current_dir, 'Interface client', 'images', 'profile_pictures')
-    pfp_path = os.path.join(images_dir, f'{username}.png')
-    minetype = 'image/png'
+    pfp_path = os.path.join(images_dir, f'{username}.jpg')
+    minetype = 'image/jpeg'
+    if not os.path.exists(pfp_path): 
+        pfp_path = os.path.join(images_dir, f'{username}.png')
+        minetype = 'image/png'
 
     # Vérifier si le fichier existe
     if not os.path.exists(pfp_path):
@@ -427,6 +432,39 @@ def update_channel():
         return render_template("html/update_channel.html",
                                connected = "user" in session)
     return redirect(url_for('login'))
+
+@app.route('/add_youtube_video', methods=['GET', 'POST'])
+def add_youtube_video():
+    if request.method == 'POST':
+        video_input_id = request.form["youtubevideoid"]
+        if not video_input_id: 
+            flash(f"Invalid post...")
+            return render_template('html/add_youtube_video.html')
+        if len(video_input_id)>11: # si url complete
+            first_split = video_input_id.split("?v=", 1)
+            second_split = first_split[1].split("&", 1)
+            video_input_id = second_split[0]
+
+        video_info_resp = req.get(f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_input_id}&format=json")
+        if video_info_resp.status_code == 200:
+            insert_succesfull = insert_new_youtube_video(video_input_id)
+            # print(video_info_resp.json())
+            if insert_succesfull :
+                flash(f"Video added !")
+                author_name = video_info_resp.json()['author_name']
+                author_url  = video_info_resp.json()['author_url']
+                # print(author_name)
+                # print("youtuber_pfp_in_db", youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']))
+                if not youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']):
+                    if not get_youtuber_pfp_from_video_id(author_name, author_url, app.config['UPLOAD_FOLDER']):
+                        flash(f"Video added, but the profile picture wasn't loaded.")
+            else:
+                flash(f"Video insert failed...")
+        else:
+            flash(f"Video not found...")
+        return render_template('html/add_youtube_video.html')
+    else:
+        return render_template('html/add_youtube_video.html')
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():

@@ -287,6 +287,17 @@ def add_video(video_id, username):
             ;""", [video_id, user_pk])
     close_connection(cur, conn)
 
+def insert_new_youtube_video(video_id):
+    try:
+        cur, conn = connection()
+        cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video)
+                    VALUES (%s,true)
+                    ;""", [video_id])
+        close_connection(cur, conn)
+        return True
+    except:
+        return False
+
 def get_author_info_from_video(video_id):
     cur, conn = connection()
     cur.execute("""SELECT username, channel_url, register_date
