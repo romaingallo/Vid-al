@@ -60,6 +60,7 @@
             <div id="description">Description</div>
             {% if connected %}
             <form action="#" method="post" class="form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <label for="cmmnt" class="commenttext">Write a comment :</label><br>
                 <input type="text" id="cmmnt" name="cmmnt" class="boxinput"><br>
                 <input type="submit" value="Send" class="submitcommentbutton">

@@ -8,6 +8,7 @@
 {% block content %}
 <h1>Update the adresse of the channel server</h1>
 <form method=post>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="text" name="newchannelurl"><br>
     <input type="submit" value="Update">
 </form>

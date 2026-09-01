@@ -99,6 +99,7 @@
 .video-card {
     background: #fff;
     border-radius: 6px;
+    font-family: Roboto, "Arial", sans-serif;
     overflow: hidden;
     box-shadow: 0 1px 6px rgba(0,0,0,0.08);
     display: flex;

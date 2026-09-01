@@ -85,21 +85,23 @@ async function remove_tag(tag_name) {
 async function search_tag() {
     let input = document.getElementById('searchtagbar').value
     input = input.toLowerCase();
-    try {
-        const data = await send_search_tag(input);
-        searchtagsresults.innerHTML = '';
-        data.forEach(element => {
-            const li = document.createElement('li');
-            li.innerHTML = `${element} <img src="/images/plus_cross.svg" class="imgbuttonicon" alt="+" onclick="add_tag(\'${element}\')">`;
-            searchtagsresults.appendChild(li);
-        });
-        if (data.length==0){
-            const li = document.createElement('li');
-            li.innerHTML = `${input} <img src="/images/plus_cross.svg" class="imgbuttonicon" alt="+" onclick="add_tag(\'${input}\')">`;
-            searchtagsresults.appendChild(li);
+    if (input.length >0) {
+        try {
+            const data = await send_search_tag(input);
+            searchtagsresults.innerHTML = '';
+            data.forEach(element => {
+                const li = document.createElement('li');
+                li.innerHTML = `${element} <img src="/images/plus_cross.svg" class="imgbuttonicon" alt="+" onclick="add_tag(\'${element}\')">`;
+                searchtagsresults.appendChild(li);
+            });
+            if (data.length==0){
+                const li = document.createElement('li');
+                li.innerHTML = `${input} <img src="/images/plus_cross.svg" class="imgbuttonicon" alt="+" onclick="add_tag(\'${input}\')">`;
+                searchtagsresults.appendChild(li);
+            }
+        } catch (error) {
+            console.error("Error in search_tag:", error);
         }
-    } catch (error) {
-        console.error("Error in search_tag:", error);
     }
 }
 

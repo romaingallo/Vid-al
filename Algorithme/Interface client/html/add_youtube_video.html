@@ -8,6 +8,7 @@
 {% block content %}
 <h1>Add youtube video from video id</h1>
 <form method=post>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="text" name="youtubevideoid"><br>
     <input type="submit" value="Add video">
 </form>

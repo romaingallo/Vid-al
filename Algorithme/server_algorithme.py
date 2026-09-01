@@ -1,26 +1,169 @@
 from flask import Flask, jsonify, request, send_file, redirect, url_for, session, render_template, flash
-from flask_cors import CORS
+# from flask_cors import CORS
 from database_requests import *
 import config
 import os
+import threading
+import time
 from datetime import timedelta
 from werkzeug.utils import secure_filename
 import requests as req
 import json
+import hmac
+import secrets
+import ipaddress
+import socket
+from urllib.parse import urlsplit, urlunsplit, urlparse, parse_qs
+from dotenv import load_dotenv
+import re
+from collections import defaultdict
 
 INTERFACE_DIR = os.path.join(os.path.dirname(__file__), 'Interface client')
+load_dotenv()
 app = Flask(__name__, static_folder=INTERFACE_DIR, static_url_path='', template_folder=INTERFACE_DIR)
-app.secret_key = "secret_key"
+app.secret_key = os.environ["FLASK_SECRET_KEY"]
 app.permanent_session_lifetime = timedelta(minutes=5)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'Interface client', 'images', 'profile_pictures')
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000 # max upload file size = 16 megabytes
-CORS(app)  # autorise toutes les origines (adapter en prod)
+# CORS(app)  # autorise toutes les origines (adapter en prod)
 
 MAX_TAG_NUMBER_ON_VIDEO = 5
 NUMBER_OF_VIDEO_PER_FETCH = 6 # -> le fecth javascript fait des offsets de 6, n'est pas lié à cette variable
 
+LOGIN_MAX_FAILURES = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+login_attempts = {}
+login_attempts_lock = threading.Lock()
+
+YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
+
+CSRF_SESSION_KEY = '_csrf_token'
+
+def validate_public_server_url(value):
+    try:
+        parsed = urlsplit(value.strip())
+        if parsed.scheme not in {'http', 'https'} or parsed.username or parsed.password:
+            return None
+        if parsed.path not in {'', '/'} or parsed.query or parsed.fragment:
+            return None
+        hostname = parsed.hostname
+        if not hostname or len(hostname) > 253:
+            return None
+        port = parsed.port
+        if port is not None and not 1 <= port <= 65535:
+            return None
+
+        addresses = socket.getaddrinfo(
+            hostname,
+            port or (443 if parsed.scheme == 'https' else 80),
+            type=socket.SOCK_STREAM,
+        )
+        if not addresses or any(
+            not ipaddress.ip_address(address[4][0]).is_global for address in addresses
+        ):
+            return None
+
+        return urlunsplit((parsed.scheme, parsed.netloc, '', '', '')).rstrip('/')
+    except (AttributeError, ValueError, socket.gaierror, UnicodeError):
+        return None
+
+def get_from_public_server(base_url, path):
+    return req.get(f'{base_url}{path}', timeout=5, allow_redirects=False)
+
+def get_csrf_token():
+    token = session.get(CSRF_SESSION_KEY)
+    if token is None:
+        token = secrets.token_urlsafe(32)
+        session[CSRF_SESSION_KEY] = token
+    return token
+
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_-]{0,31}$")
+TAG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _-]{0,49}$")
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def sanitize_username(value):
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value or len(value) > 32:
+        return None
+    if any(ch.isspace() for ch in value):
+        return None
+    if not USERNAME_RE.fullmatch(value):
+        return None
+    return value
+
+
+def sanitize_tag_name(value):
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value or len(value) > 50:
+        return None
+    if CONTROL_CHARS_RE.search(value):
+        return None
+    if any(ch in value for ch in [';', '\'', '"', '\\', '--']):
+        return None
+    if not TAG_RE.fullmatch(value):
+        return None
+    return value
+
+
+def sanitize_comment_text(value, max_length=1000):
+    if value is None:
+        return ""
+    text = str(value).strip()
+    text = CONTROL_CHARS_RE.sub('', text)
+    if len(text) > max_length:
+        text = text[:max_length]
+    return text
+
+
+def sanitize_generic_text(value, max_length=255):
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value or len(value) > max_length:
+        return None
+    if CONTROL_CHARS_RE.search(value):
+        return None
+    if any(ch in value for ch in [';', '\'', '"', '\\', '--']):
+        return None
+    return value
+
+
+@app.context_processor
+def inject_csrf_token():
+    return {'csrf_token': get_csrf_token()}
+
+@app.before_request
+def protect_state_changing_requests():
+    if request.method not in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+        return
+
+    submitted_token = request.headers.get('X-CSRFToken') or request.form.get('csrf_token')
+    expected_token = session.get(CSRF_SESSION_KEY)
+    if not expected_token or not submitted_token or not hmac.compare_digest(submitted_token, expected_token):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Invalid CSRF token.'}), 400
+        return 'Invalid CSRF token.', 400
+
+rate_limit = defaultdict(list)
+
+def is_rate_limited(ip):
+    now = time.time()
+    history = rate_limit[ip]
+    history[:] = [t for t in history if now - t < 60]
+    if len(history) >= 10:
+        return True
+    history.append(now)
+    return False
 
 def convert_sql_output_to_json(data_input):
     # Input  : [(url0, user_pk, nb_likes, nb_view), (url1, user_pk, nb_likes, nb_view)]
@@ -33,6 +176,33 @@ def convert_sql_output_to_json(data_input):
         data_output.append({"channel": video_data[1], "views": str(video_data[3]), "likes": f"{video_data[2]}" , "url": video_data[0]})
     return data_output
 
+def login_is_rate_limited(ip_address, username):
+    now = time.monotonic()
+    keys = [('ip', ip_address), ('user', ip_address, username)]
+    with login_attempts_lock:
+        for key in keys:
+            attempts = [timestamp for timestamp in login_attempts.get(key, [])
+                        if now - timestamp < LOGIN_WINDOW_SECONDS]
+            login_attempts[key] = attempts
+            if len(attempts) >= LOGIN_MAX_FAILURES:
+                retry_after = int(LOGIN_WINDOW_SECONDS - (now - attempts[0])) + 1
+                return retry_after
+    return 0
+
+def record_login_failure(ip_address, username):
+    now = time.monotonic()
+    keys = [('ip', ip_address), ('user', ip_address, username)]
+    with login_attempts_lock:
+        for key in keys:
+            attempts = [timestamp for timestamp in login_attempts.get(key, [])
+                        if now - timestamp < LOGIN_WINDOW_SECONDS]
+            attempts.append(now)
+            login_attempts[key] = attempts
+
+def clear_login_failures(ip_address, username):
+    with login_attempts_lock:
+        login_attempts.pop(('user', ip_address, username), None)
+
 @app.route('/')
 def home():
     # path = os.path.join(os.path.dirname(__file__), '.', 'Interface client', 'main.html')
@@ -43,11 +213,26 @@ def home():
 @app.route('/login', methods=["POST", "GET"])
 def login():
     if request.method == "POST":
-        if authentification(request.form["usrname"], request.form["psswrd"]) :
-            session["user"] = request.form["usrname"]
+        username = sanitize_username(request.form.get("usrname", ""))
+        password = request.form.get("psswrd", "")
+        if username is None or len(password) < 6 or len(password) > 256:
+            flash("Invalid password or username.")
+            return redirect(url_for('login'))
+        ip_address = request.remote_addr or "unknown"
+        retry_after = login_is_rate_limited(ip_address, username)
+        if retry_after:
+            response = redirect(url_for('login'))
+            response.headers["Retry-After"] = str(retry_after)
+            flash("Too many failed login attempts. Please try again later.")
+            return response, 429
+
+        if authentification(username, password) :
+            clear_login_failures(ip_address, username)
+            session["user"] = username
             session.permanent = True
             return redirect(url_for('home'))
         else :
+            record_login_failure(ip_address, username)
             flash("Invalid password or username.")
             return redirect(url_for('login'))
     else : 
@@ -59,15 +244,13 @@ def login():
 @app.route('/register', methods=["POST", "GET"])
 def register():
     if request.method == "POST":
-        username_input, password_input = request.form["usrname"], request.form["psswrd"]
-        if len(username_input) < 1 or len(password_input) < 6 :
+        username_input = sanitize_username(request.form.get("usrname", ""))
+        password_input = request.form.get("psswrd", "")
+        if username_input is None or len(password_input) < 6 or len(password_input) > 256:
             flash("Invalid entry : the username should not be empty, and the password should be at least 6 characters.")
             return redirect(url_for('register'))
         elif len(get_user_by_name(username_input)) > 0 :
             flash("Username already taken.")
-            return redirect(url_for('register'))
-        elif secure_filename(username_input) != username_input :
-            flash("Username contains wrong characters.")
             return redirect(url_for('register'))
         else : # adding user + session
             add_new_user(username_input, password_input)
@@ -136,7 +319,7 @@ def react(video_id):
 def deletecomment():
     if request.method == 'POST':
         if "user" in session: 
-            comment_id = request.form.get('comment_id')
+            comment_id = sanitize_generic_text(request.form.get('comment_id'))
             if not comment_id : return '', 400
             if is_comment_from(comment_id, session["user"]):
                 remove_comment_from_pk(comment_id)
@@ -150,10 +333,10 @@ def deletecomment():
 def pfp():
     if "user" in session:
         images_dir = os.path.join(current_dir, 'Interface client', 'images', 'profile_pictures')
-        pfp_path = os.path.join(images_dir, f'{session["user"]}.jpg')
+        pfp_path = os.path.join(images_dir, f'{secure_filename(session["user"])}.jpg')
         minetype = 'image/jpeg'
         if not os.path.exists(pfp_path):
-            pfp_path = os.path.join(images_dir, f'{session["user"]}.png')
+            pfp_path = os.path.join(images_dir, f'{secure_filename(session["user"])}.png')
             minetype = 'image/png'
 
         # Vérifier si le fichier existe
@@ -238,8 +421,9 @@ def followedvideos(offset):
 def togglefollowing():
     if request.method == 'POST':
         if "user" in session : 
-            channel_followed_username = request.form.get('channel_followed_username')
-            if not channel_followed_username : jsonify({"error": "channel_followed_username is missing."}), 400
+            channel_followed_username = sanitize_username(request.form.get('channel_followed_username'))
+            if not channel_followed_username :
+                return jsonify({"error": "channel_followed_username is missing."}), 400
             if toggle_following_channel(session["user"], channel_followed_username):
                 return '', 200
             return jsonify({"error": 'Toggling the follow failed.'}), 500
@@ -272,7 +456,7 @@ def edit(channel_name, video_id):
 def toggle_is_hidden():
     if request.method == 'POST':
         if "user" in session: 
-            video_id = request.form.get('video_id')
+            video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
             if is_video_from(video_id, session["user"]):
                 if toggle_is_hidden_of(video_id):
@@ -287,10 +471,10 @@ def toggle_is_hidden():
 def remove_tag():
     if request.method == 'POST':
         if "user" in session: 
-            video_id = request.form.get('video_id')
+            video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
             if is_video_from(video_id, session["user"]):
-                tag_name = request.form.get('tag_name')
+                tag_name = sanitize_tag_name(request.form.get('tag_name'))
                 if not tag_name : return '', 400
                 if remove_tag_from_video(tag_name, video_id):
                     return '', 200
@@ -304,12 +488,12 @@ def remove_tag():
 def add_tag():
     if request.method == 'POST':
         if "user" in session: 
-            video_id = request.form.get('video_id')
+            video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
             if is_video_from(video_id, session["user"]):
                 list_tags_on_video = get_tags_of_video(video_id)
                 if len(list_tags_on_video)+1 > MAX_TAG_NUMBER_ON_VIDEO: return jsonify({"error": f'The video has already been tagged {MAX_TAG_NUMBER_ON_VIDEO} times (max per video).'}), 500
-                tag_name = request.form.get('tag_name')
+                tag_name = sanitize_tag_name(request.form.get('tag_name'))
                 if not tag_name : return '', 400
                 if tag_name in list_tags_on_video: return jsonify({"error": f'The video has already been tagged {tag_name}.'}), 500
                 if add_tag_on_video(video_id, tag_name):
@@ -323,7 +507,7 @@ def add_tag():
 @app.route('/api/search/tag', methods=['POST'])
 def search_for_tag():
     if request.method == 'POST':
-        tag_searched = request.form.get('tag_searched')
+        tag_searched = sanitize_tag_name(request.form.get('tag_searched'))
         if not tag_searched : return '', 400
         tag_list = search_for_tag_request(tag_searched)
         return json.dumps(tag_list), 200
@@ -331,6 +515,7 @@ def search_for_tag():
 
 @app.route('/watch/<video_id>', methods=['GET', 'POST'])
 def watch(video_id):
+    if not sanitize_generic_text(video_id, 255) : return redirect(url_for('home'))
     if not is_video_in_db(video_id) : return redirect(url_for('home'))
 
     is_youtube_video = get_is_youtube_video(video_id)
@@ -338,7 +523,9 @@ def watch(video_id):
     if request.method == 'POST':
         # print(request.form["cmmnt"])
         if "user" in session:
-            add_comment_on_video(video_id, session["user"], request.form["cmmnt"])
+            comment_text = sanitize_comment_text(request.form.get("cmmnt", ""))
+            if comment_text:
+                add_comment_on_video(video_id, session["user"], comment_text)
         else:
             print("Error : tried to post comment without being connected")
         
@@ -389,6 +576,18 @@ def upload_pfp():
                 flash('No selected file')
                 return redirect(request.url)
             if file and allowed_file(file.filename, ['png']):
+                # check file size (max 2MB)
+                try:
+                    # seek to end to get size, then rewind
+                    file.stream.seek(0, os.SEEK_END)
+                    file_size = file.stream.tell()
+                    file.stream.seek(0)
+                except Exception:
+                    file_size = None
+                MAX_SIZE = 2 * 1024 * 1024
+                if file_size is not None and file_size > MAX_SIZE:
+                    flash('File is too large. Max size is 2 MB.')
+                    return redirect(request.url)
                 # filename = secure_filename(file.filename)
                 filename = f'{session["user"]}.png'
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
@@ -403,9 +602,13 @@ def upload_pfp():
 def update_channel():
     if "user" in session: 
         if request.method == 'POST':
-            new_channel_url = request.form["newchannelurl"]
-            # to do : vérif user input ( != vide, ... ?)
-            channel_info_resp = req.get(f"{new_channel_url}/channelinfo", timeout=5)
+            new_channel_url = validate_public_server_url(request.form.get("newchannelurl", ""))
+            if not new_channel_url:
+                flash("Invalid server URL. Use a public HTTP(S) server URL without a path or credentials.")
+                return render_template("html/update_channel.html",
+                                       connected = "user" in session)
+
+            channel_info_resp = get_from_public_server(new_channel_url, "/channelinfo")
             if channel_info_resp.status_code == 200:
                 resp_dict = channel_info_resp.json()
                 is_user_an_author = False
@@ -413,9 +616,9 @@ def update_channel():
                     if resp_dict[video_id]["author"] != session["user"]:
                         continue
                     is_user_an_author = True
-                    video_resp     = req.get(f"{new_channel_url}/video/{video_id}", timeout=5)
-                    meta_resp      = req.get(f"{new_channel_url}/meta/{video_id}", timeout=5)
-                    thumbnail_resp = req.get(f"{new_channel_url}/thumbnail/{video_id}", timeout=5)
+                    video_resp     = get_from_public_server(new_channel_url, f"/video/{video_id}")
+                    meta_resp      = get_from_public_server(new_channel_url, f"/meta/{video_id}")
+                    thumbnail_resp = get_from_public_server(new_channel_url, f"/thumbnail/{video_id}")
                     if video_resp.status_code != 200 or meta_resp.status_code != 200 or thumbnail_resp.status_code != 200:
                         flash(f"{video_id} is not valid : video_resp={video_resp.status_code} , meta_resp={meta_resp.status_code} , thumbnail_resp={thumbnail_resp.status_code}")
                     else:
@@ -433,35 +636,91 @@ def update_channel():
                                connected = "user" in session)
     return redirect(url_for('login'))
 
+def normalize_youtube_id(value):
+    if value is None:
+        return None
+
+    value = str(value).strip()
+
+    if not value:
+        return None
+
+    if "youtube.com" in value or "youtu.be" in value:
+        try:
+            parsed = urlparse(value)
+            if "youtu.be" in parsed.netloc:
+                video_id = parsed.path.strip("/")
+                return video_id if YOUTUBE_ID_RE.fullmatch(video_id) else None
+
+            if "youtube.com" in parsed.netloc:
+                qs = parse_qs(parsed.query)
+                video_id = qs.get("v", [None])[0]
+                return video_id if video_id and YOUTUBE_ID_RE.fullmatch(video_id) else None
+        except Exception:
+            return None
+
+    return value if YOUTUBE_ID_RE.fullmatch(value) else None
+
 @app.route('/add_youtube_video', methods=['GET', 'POST'])
 def add_youtube_video():
     if request.method == 'POST':
-        video_input_id = request.form["youtubevideoid"]
-        if not video_input_id: 
-            flash(f"Invalid post...")
-            return render_template('html/add_youtube_video.html')
-        if len(video_input_id)>11: # si url complete
-            first_split = video_input_id.split("?v=", 1)
-            second_split = first_split[1].split("&", 1)
-            video_input_id = second_split[0]
 
-        video_info_resp = req.get(f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_input_id}&format=json")
-        if video_info_resp.status_code == 200:
-            insert_succesfull = insert_new_youtube_video(video_input_id)
-            # print(video_info_resp.json())
-            if insert_succesfull :
-                flash(f"Video added !")
-                author_name = video_info_resp.json()['author_name']
-                author_url  = video_info_resp.json()['author_url']
-                # print(author_name)
-                # print("youtuber_pfp_in_db", youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']))
-                if not youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']):
-                    if not get_youtuber_pfp_from_video_id(author_name, author_url, app.config['UPLOAD_FOLDER']):
-                        flash(f"Video added, but the profile picture wasn't loaded.")
-            else:
-                flash(f"Video insert failed...")
-        else:
+        if is_rate_limited(request.remote_addr):
+            flash("To many requests, try later.")
+            return render_template("html/add_youtube_video.html")
+        
+        video_id = normalize_youtube_id(request.form.get("youtubevideoid"))
+        if not video_id:
+            flash("ID YouTube invalide.")
+            return render_template("html/add_youtube_video.html")
+        # video_input_id = request.form["youtubevideoid"]
+        # if not video_input_id: 
+        #     flash(f"Invalid post...")
+        #     return render_template('html/add_youtube_video.html')
+        # if len(video_input_id)>11: # si url complete
+        #     first_split = video_input_id.split("?v=", 1)
+        #     second_split = first_split[1].split("&", 1)
+        #     video_input_id = second_split[0]
+
+        if is_video_in_db(video_id):
+            flash("This video is already registered.")
+            return render_template("html/add_youtube_video.html")
+
+
+        video_info_resp = req.get(
+            f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
+            timeout=5,
+            allow_redirects=False)
+        
+        if video_info_resp.status_code != 200:
             flash(f"Video not found...")
+            return render_template('html/add_youtube_video.html')
+
+        content_type = video_info_resp.headers.get("Content-Type", "")
+        if "application/json" not in content_type and not video_info_resp.text.strip().startswith("{"):
+            flash("Réponse invalide du service externe.")
+            return render_template("html/add_youtube_video.html")
+
+        payload = video_info_resp.json()
+        author_name = payload.get("author_name")
+        author_url = payload.get("author_url")
+        if not author_name or not author_url:
+            flash("Données YouTube incomplètes.")
+            return render_template("html/add_youtube_video.html")
+        
+        insert_succesfull = insert_new_youtube_video(video_id)
+        # print(video_info_resp.json())
+        if insert_succesfull :
+            flash(f"Video added !")
+            author_name = video_info_resp.json()['author_name']
+            author_url  = video_info_resp.json()['author_url']
+            # print(author_name)
+            # print("youtuber_pfp_in_db", youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']))
+            if not youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']):
+                if not get_youtuber_pfp_from_video_id(author_name, author_url, app.config['UPLOAD_FOLDER']):
+                    flash(f"Video added, but the profile picture wasn't loaded.")
+        else:
+            flash(f"Video insert failed...")
         return render_template('html/add_youtube_video.html')
     else:
         return render_template('html/add_youtube_video.html')
@@ -471,23 +730,33 @@ def settings():
     if "user" in session : 
         if request.method == 'POST':
             new_like_scale = request.form.get('new_like_scale')
-            if not new_like_scale : return '', 400
-            if new_like_scale :
+            if new_like_scale is not None:
+                try:
+                    new_like_scale = float(new_like_scale)
+                except (TypeError, ValueError):
+                    return jsonify({"error": 'Invalid value.'}), 400
                 if update_user_setting("setting_like_scale", new_like_scale, session["user"]):
                     return '', 200
                 return jsonify({"error": 'Update failed.'}), 500
             new_view_scale = request.form.get('new_view_scale')
-            if not new_view_scale : return '', 400
-            if new_view_scale :
+            if new_view_scale is not None:
+                try:
+                    new_view_scale = float(new_view_scale)
+                except (TypeError, ValueError):
+                    return jsonify({"error": 'Invalid value.'}), 400
                 if update_user_setting("setting_view_scale", new_view_scale, session["user"]):
                     return '', 200
                 return jsonify({"error": 'Update failed.'}), 500
             new_tag_scale = request.form.get('new_tag_scale')
-            if not new_tag_scale : return '', 400
-            if new_tag_scale :
+            if new_tag_scale is not None:
+                try:
+                    new_tag_scale = float(new_tag_scale)
+                except (TypeError, ValueError):
+                    return jsonify({"error": 'Invalid value.'}), 400
                 if update_user_setting("setting_tags_scale", new_tag_scale, session["user"]):
                     return '', 200
                 return jsonify({"error": 'Update failed.'}), 500
+            return '', 400
         
         list_settings = get_user_setting(session["user"])
         list_tags     = get_user_followed_tags(session["user"])
@@ -500,7 +769,7 @@ def settings():
 def remove_followed_tag():
     if request.method == 'POST':
         if "user" in session: 
-            tag_name = request.form.get('tag_name')
+            tag_name = sanitize_tag_name(request.form.get('tag_name'))
             if not tag_name : return '', 400
             if remove_followed_tag_from_user(tag_name, session["user"]):
                 return '', 200
@@ -513,7 +782,7 @@ def remove_followed_tag():
 def add_user_followed_tag():
     if request.method == 'POST':
         if "user" in session: 
-            tag_name = request.form.get('tag_name')
+            tag_name = sanitize_tag_name(request.form.get('tag_name'))
             if not tag_name : return '', 400
             list_followed_tags = get_user_followed_tags(session["user"])
             if tag_name in list_followed_tags: return jsonify({"error": f'You are already following the tag {tag_name}.'}), 500

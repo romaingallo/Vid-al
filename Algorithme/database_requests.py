@@ -41,24 +41,26 @@ def close_connection(cur, conn):
 def get_videos(username, limit, offset):
     cur, conn = connection()
     like_scale, view_scale, get_tag_settings, use_tag_settings = 1, 0.1, '', ''
+    query_params = [like_scale, view_scale, limit, offset]
     if username :
         cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
             FROM users
             WHERE username = %s
             ;""", [username])
         like_scale, view_scale, tags_scale = cur.fetchone()
-        get_tag_settings = f'''LEFT JOIN(
+        get_tag_settings = '''LEFT JOIN(
                     SELECT videourl, COUNT(tcc.tags) AS nb_tags
                     FROM has_tag ht 
                     INNER JOIN (
                             SELECT f.tags
                             FROM follow_tags f
                             JOIN users u ON u.user_pk = f.user_pk
-                            WHERE username = '{username}'
+                            WHERE u.username = %s
                     ) tcc ON ht.tags = tcc.tags
                     GROUP BY videourl
             ) tc ON tc.videourl = v.videourl'''
         use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
+        query_params = [username, like_scale, view_scale, limit, offset]
     request = f'''SELECT v.videourl,
                COALESCE(u.username, 'UnknownFromYoutube') AS username,
                COALESCE(lc.nb_likes, 0)     AS nb_likes,
@@ -88,7 +90,10 @@ def get_videos(username, limit, offset):
         ) DESC
         LIMIT %s OFFSET %s
         ;'''
-    cur.execute(request, [like_scale, view_scale, limit, offset])
+    if username:
+        cur.execute(request, [username, like_scale, view_scale, limit, offset])
+    else:
+        cur.execute(request, [like_scale, view_scale, limit, offset])
     result = cur.fetchall()
     close_connection(cur, conn)
 
@@ -103,7 +108,8 @@ def get_all_videos_from_channel(channel_usename, limit, offset):
                COALESCE(vc.nb_views, 0)    AS nb_views,
                u.channel_url               AS channel_url,
                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
-               v.is_hidden
+               v.is_hidden, 
+               v.is_youtube_video
         FROM videos v
         JOIN users u ON v.user_pk = u.user_pk
         LEFT JOIN (
@@ -514,7 +520,8 @@ def get_followed_videos(follower_username, limit, offset):
                     COALESCE(vc.nb_views, 0)    AS nb_views,
                     u.channel_url               AS channel_url,
                     COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
-                    v.is_hidden
+                    v.is_hidden, 
+                    v.is_youtube_video
                 FROM videos v
                 JOIN users u ON v.user_pk = u.user_pk
                 LEFT JOIN (

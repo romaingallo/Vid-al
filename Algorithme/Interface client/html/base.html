@@ -3,6 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script>
+        (function () {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            const originalFetch = window.fetch;
+            window.fetch = function (input, init) {
+                const requestUrl = new URL(typeof input === 'string' ? input : input.url, window.location.href);
+                const requestMethod = (init && init.method) || (typeof input !== 'string' ? input.method : 'GET');
+                if (requestUrl.origin === window.location.origin && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(requestMethod.toUpperCase())) {
+                    const options = init || {};
+                    const headers = new Headers(options.headers || (typeof input !== 'string' ? input.headers : undefined));
+                    headers.set('X-CSRFToken', csrfToken);
+                    return originalFetch(input, Object.assign({}, options, {headers: headers, credentials: 'same-origin'}));
+                }
+                return originalFetch(input, init);
+            };
+            document.addEventListener('submit', function (event) {
+                const form = event.target;
+                if (form.method.toLowerCase() !== 'post' || form.querySelector('input[name="csrf_token"]')) return;
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = 'csrf_token';
+                tokenInput.value = csrfToken;
+                form.appendChild(tokenInput);
+            });
+        }());
+    </script>
     {% block title %}{% endblock%}
 </head>
 <body style="margin: 0;">
