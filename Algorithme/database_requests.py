@@ -4,6 +4,7 @@ import hashlib
 from time import sleep
 from utils import *
 import config
+from youtube_api import get_one_video_stats, get_videos_stats
 
 def connection():
     conn = psycopg2.connect(
@@ -41,7 +42,6 @@ def close_connection(cur, conn):
 def get_videos(username, limit, offset):
     cur, conn = connection()
     like_scale, view_scale, get_tag_settings, use_tag_settings = 1, 0.1, '', ''
-    query_params = [like_scale, view_scale, limit, offset]
     if username :
         cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
             FROM users
@@ -60,11 +60,10 @@ def get_videos(username, limit, offset):
                     GROUP BY videourl
             ) tc ON tc.videourl = v.videourl'''
         use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
-        query_params = [username, like_scale, view_scale, limit, offset]
     request = f'''SELECT v.videourl,
                COALESCE(u.username, 'UnknownFromYoutube') AS username,
-               COALESCE(lc.nb_likes, 0)     AS nb_likes,
-               COALESCE(vc.nb_views, 0)     AS nb_views,
+               COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)    AS nb_likes,
+               COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0)    AS nb_views,
                COALESCE(u.channel_url, '')  AS channel_url,
                COALESCE(lc.nb_dislikes, 0)  AS nb_dislikes,
                v.is_hidden, 
@@ -86,8 +85,9 @@ def get_videos(username, limit, offset):
         {get_tag_settings}
         WHERE v.is_hidden = False
         ORDER BY (
-            %s * CBRT( COALESCE(lc.nb_likes,0) - COALESCE(lc.nb_dislikes,0) ) + %s * CBRT( COALESCE(vc.nb_views, 0) ) {use_tag_settings}
-        ) DESC
+            %s * CBRT( COALESCE(lc.nb_likes,0) + COALESCE(v.youtube_likes, 0) - COALESCE(lc.nb_dislikes,0) ) + %s * ( CBRT( COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0) )  ) {use_tag_settings}
+        ) DESC,
+        v.videourl ASC
         LIMIT %s OFFSET %s
         ;'''
     if username:
@@ -104,8 +104,8 @@ def get_all_videos_from_channel(channel_usename, limit, offset):
     cur.execute("""
         SELECT v.videourl,
                u.username,
-               COALESCE(lc.nb_likes, 0)    AS nb_likes,
-               COALESCE(vc.nb_views, 0)    AS nb_views,
+               COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)   AS nb_likes,
+               COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0)   AS nb_views,
                u.channel_url               AS channel_url,
                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
                v.is_hidden, 
@@ -351,7 +351,7 @@ def add_view(username, video_id):
 def get_video_views(video_id):
     cur, conn = connection()
     cur.execute("SELECT v.videourl,"\
-        "COUNT(has_been_viewed_by) as nb_views "\
+        "COUNT(has_been_viewed_by) + COALESCE(v.youtube_views, 0) as nb_views "\
         "FROM videos v " \
         "LEFT JOIN has_been_viewed_by ON v.videourl = has_been_viewed_by.videourl " \
         "WHERE v.videourl = %s " \
@@ -516,8 +516,8 @@ def get_followed_videos(follower_username, limit, offset):
     cur.execute("""
                 SELECT v.videourl,
                     u.username,
-                    COALESCE(lc.nb_likes, 0)    AS nb_likes,
-                    COALESCE(vc.nb_views, 0)    AS nb_views,
+                    COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)   AS nb_likes,
+                    COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0)   AS nb_views,
                     u.channel_url               AS channel_url,
                     COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
                     v.is_hidden, 
@@ -687,8 +687,10 @@ def get_is_youtube_video(video_id):
             FROM videos v
             WHERE v.videourl = %s
         ;""", [video_id])
-    res = cur.fetchone()[0]
+    res = cur.fetchone()
+    if res == None: raise ValueError(f"No video found with video_id={video_id}")
     close_connection(cur, conn)
+    res = res[0]
     return res
 
 def is_video_in_db(video_id):
@@ -701,9 +703,55 @@ def is_video_in_db(video_id):
     close_connection(cur, conn)
     return res != None
 
+def update_youtube_video_stats_with_api(video_id, force_api_key=None):
+    if not get_is_youtube_video(video_id):
+        raise ValueError(f"This video_id is not registered as a youtube video. video_id={video_id}")
+
+    view_count, like_count = get_one_video_stats(video_id, force_api_key)
+
+    if not view_count.isnumeric() or not like_count.isnumeric():
+        raise ValueError(f"Error while accessing youtube stats. video_id={video_id}")
+
+    cur, conn = connection()
+    cur.execute("""UPDATE videos v
+        SET youtube_views=%s , youtube_likes=%s
+        WHERE v.videourl=%s
+        ;""", [view_count, like_count, video_id])
+    close_connection(cur, conn)
+
+def get_all_youtube_videos():
+    cur, conn = connection()
+    cur.execute("""SELECT v.videourl 
+        FROM videos v 
+        WHERE v.is_youtube_video = TRUE;""")
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    if len(result) == 0 : return False
+    result = [res[0] for res in result]
+    return result
+
+def update_all_youtube_video_stats_with_api(force_api_key=None):
+    videos_id_list = get_all_youtube_videos()
+
+    videos_stats = get_videos_stats(videos_id_list, force_api_key)
+
+    cur, conn = connection()
+    for video_id in videos_stats:
+        if not videos_stats[video_id]["view_count"].isnumeric() or not  videos_stats[video_id]["like_count"].isnumeric():
+            print(f"Error while accessing youtube stats. video_id={video_id}")
+            continue
+
+        cur.execute("""UPDATE videos v
+            SET youtube_views=%s , youtube_likes=%s
+            WHERE v.videourl=%s
+            ;""", [videos_stats[video_id]["view_count"], videos_stats[video_id]["like_count"], video_id])
+    close_connection(cur, conn)
+    return
+
 if __name__ == "__main__" :
     print("Enter the database password : ")
     config.database_password = input()
+    
     # print(get_comments_of_video("Bird"))
     # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
     # print(update_comment_from_pk(5, "It must fly so fast !!!"))
@@ -718,4 +766,10 @@ if __name__ == "__main__" :
     # print(get_user_followed_tags("One"))
     # print(remove_followed_tag_from_user('VLOG', 'One'))
     # print(add_tag_for_user_followed('pyhon', 'One'))
-    [print(vid) for vid in get_videos(False, 15, 0)]
+    # [print(vid) for vid in get_videos(False, 15, 0)]
+
+    print("Enter youtube API key :")
+    force_api_key = input()
+    # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
+    # print(get_all_youtube_videos())
+    update_all_youtube_video_stats_with_api(force_api_key)

@@ -276,16 +276,16 @@ def videos(offset):
     if not offset.isnumeric() : return '', 400
     NUMBER_OF_VIDEO_PER_FETCH = 6
     if "user" in session: 
-        data = get_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, offset)
+        data = get_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, int(offset))
     else:
-        data = get_videos(False, NUMBER_OF_VIDEO_PER_FETCH, offset)
+        data = get_videos(False, NUMBER_OF_VIDEO_PER_FETCH, int(offset))
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>/<offset>')
 def channel(channelId, offset):
     if not offset.isnumeric() : return '', 400
     NUMBER_OF_VIDEO_PER_FETCH = 6
-    data = get_all_videos_from_channel(channelId, NUMBER_OF_VIDEO_PER_FETCH, offset)
+    data = get_all_videos_from_channel(channelId, NUMBER_OF_VIDEO_PER_FETCH, int(offset))
     return jsonify(data)
 
 @app.route('/api/videos/<video_id>/react', methods=['POST'])
@@ -413,7 +413,7 @@ def visit_channel(channel_name):
 def followedvideos(offset):
     if "user" in session : 
         NUMBER_OF_VIDEO_PER_FETCH = 6
-        data = get_followed_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, offset)
+        data = get_followed_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, int(offset))
         return jsonify(data), 200
     return jsonify({"error": 'User Unauthorized'}), 401
 
@@ -712,8 +712,8 @@ def add_youtube_video():
         # print(video_info_resp.json())
         if insert_succesfull :
             flash(f"Video added !")
-            author_name = video_info_resp.json()['author_name']
-            author_url  = video_info_resp.json()['author_url']
+            # author_name = video_info_resp.json()['author_name']
+            # author_url  = video_info_resp.json()['author_url']
             # print(author_name)
             # print("youtuber_pfp_in_db", youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']))
             if not youtuber_pfp_in_db(author_name, app.config['UPLOAD_FOLDER']):
@@ -721,6 +721,7 @@ def add_youtube_video():
                     flash(f"Video added, but the profile picture wasn't loaded.")
         else:
             flash(f"Video insert failed...")
+
         return render_template('html/add_youtube_video.html')
     else:
         return render_template('html/add_youtube_video.html')
@@ -795,7 +796,6 @@ def add_user_followed_tag():
 
 if __name__ == '__main__':
     # app.run(host='127.0.0.1', port=5000, debug=True)
-    print("Enter the database password : ")
-    config.database_password = input()
+    config.database_password = os.environ["DATABASE_PASSWORD"]
 
     app.run(host='0.0.0.0', port=5000, debug=True)
