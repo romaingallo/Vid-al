@@ -13,14 +13,4 @@
     <input type="submit" value="Add video">
 </form>
 
-{% with messages = get_flashed_messages() %}
-    {% if messages %}
-        <div class=flashes>
-        {% for message in messages %}
-            <span>{{ message }}</span>
-        {% endfor %}
-        </div>
-    {% endif %}
-{% endwith %}
-
 {% endblock %}

@@ -15,16 +15,6 @@
         <input type="text" id="psswrd" name="psswrd" class="githubboxinput"><br>
         <input type="submit" value="Register" class="githubbutton">
     </form>
-    
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class=flashes>
-            {% for message in messages %}
-                <span>{{ message }}</span>
-            {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
 
     <script src="/js/alert.js"></script>
 {% endblock %}

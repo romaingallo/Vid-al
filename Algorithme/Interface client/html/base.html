@@ -30,6 +30,16 @@
             });
         }());
     </script>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+            <script>
+                alert("{{ message }}");
+            </script>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     {% block title %}{% endblock%}
 </head>
 <body style="margin: 0;">

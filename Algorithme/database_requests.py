@@ -748,6 +748,28 @@ def update_all_youtube_video_stats_with_api(force_api_key=None):
     close_connection(cur, conn)
     return
 
+def can_user_update_channel(username):
+    cur, conn = connection()
+    cur.execute("""SELECT can_update_channel
+                FROM users
+                WHERE username = %s
+                ;""", [username])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    if result is None : return result
+    return result[0]
+
+def can_user_add_youtube_video(username):
+    cur, conn = connection()
+    cur.execute("""SELECT can_add_youtube_video
+                FROM users
+                WHERE username = %s
+                ;""", [username])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    if result is None : return False
+    return result[0]
+
 if __name__ == "__main__" :
     print("Enter the database password : ")
     config.database_password = input()
@@ -768,8 +790,11 @@ if __name__ == "__main__" :
     # print(add_tag_for_user_followed('pyhon', 'One'))
     # [print(vid) for vid in get_videos(False, 15, 0)]
 
-    print("Enter youtube API key :")
-    force_api_key = input()
-    # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
-    # print(get_all_youtube_videos())
-    update_all_youtube_video_stats_with_api(force_api_key)
+    # print("Enter youtube API key :")
+    # force_api_key = input()
+    # # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
+    # # print(get_all_youtube_videos())
+    # update_all_youtube_video_stats_with_api(force_api_key)
+
+    # print(can_user_update_channel("One"))
+    print(can_user_add_youtube_video("One"))

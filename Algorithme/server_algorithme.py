@@ -140,7 +140,10 @@ def inject_csrf_token():
 
 @app.context_processor
 def inject_config():
-    return {'ALLOW_ADD_YOUTUBE_VIDEO': config.ALLOW_ADD_YOUTUBE_VIDEO}
+    authorized_user_to_add_youtube_video = config.ALLOW_ADD_YOUTUBE_VIDEO
+    if "user" in session and config.ALLOW_AUTHORIZED_USERS_ADD_YOUTUBE_VIDEO: 
+        authorized_user_to_add_youtube_video = can_user_add_youtube_video(session["user"])
+    return {'ALLOW_ADD_YOUTUBE_VIDEO': authorized_user_to_add_youtube_video}
 
 @app.before_request
 def protect_state_changing_requests():
@@ -397,6 +400,8 @@ def pfp_of(username):
 def visit_channel(channel_name):
     host_url = get_host_url_from_username(channel_name)
     if "user" in session : 
+        authorized_user_to_update_channel = config.ALLOW_UPDATE_CHANNEL
+        if config.ALLOW_AUTHORIZED_USERS_UPDATE_CHANNEL: authorized_user_to_update_channel = can_user_update_channel(session["user"])
         return render_template("html/visit_channel.html", 
                                    name=channel_name, 
                                    own_profile= session["user"] == channel_name, 
@@ -404,7 +409,7 @@ def visit_channel(channel_name):
                                    connected = "user" in session,
                                    is_following = get_if_follow_channel(session["user"], channel_name),
                                     ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
-                                    ALLOW_UPDATE_CHANNEL = config.ALLOW_UPDATE_CHANNEL)
+                                    ALLOW_UPDATE_CHANNEL = authorized_user_to_update_channel)
     return render_template("html/visit_channel.html", 
                            name=channel_name, 
                            own_profile=False, 
@@ -614,8 +619,11 @@ def upload_pfp():
 @app.route('/update_channel', methods=['GET', 'POST'])
 def update_channel():
 
-    if not config.ALLOW_UPDATE_CHANNEL:
-        flash("ALLOW_UPDATE_CHANNEL = False")
+    authorized_user_to_update_channel = config.ALLOW_UPDATE_CHANNEL
+    if "user" in session and config.ALLOW_AUTHORIZED_USERS_UPDATE_CHANNEL: 
+        authorized_user_to_update_channel = can_user_update_channel(session["user"])
+    if not authorized_user_to_update_channel:
+        flash("authorized_user_to_update_channel = False")
         return redirect(url_for('home'))
 
     if "user" in session: 
@@ -682,8 +690,11 @@ def normalize_youtube_id(value):
 @app.route('/add_youtube_video', methods=['GET', 'POST'])
 def add_youtube_video():
 
-    if not config.ALLOW_ADD_YOUTUBE_VIDEO:
-        flash("ALLOW_ADD_YOUTUBE_VIDEO = False")
+    authorized_user_to_add_youtube_video = config.ALLOW_ADD_YOUTUBE_VIDEO
+    if "user" in session and config.ALLOW_AUTHORIZED_USERS_ADD_YOUTUBE_VIDEO: 
+        authorized_user_to_add_youtube_video = can_user_add_youtube_video(session["user"])
+    if not authorized_user_to_add_youtube_video:
+        flash("authorized_user_to_add_youtube_video = False")
         return redirect(url_for('home'))
 
     if request.method == 'POST':
