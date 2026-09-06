@@ -99,7 +99,6 @@ def sanitize_username(value):
         return None
     return value
 
-
 def sanitize_tag_name(value):
     if value is None:
         return None
@@ -114,7 +113,6 @@ def sanitize_tag_name(value):
         return None
     return value
 
-
 def sanitize_comment_text(value, max_length=1000):
     if value is None:
         return ""
@@ -123,7 +121,6 @@ def sanitize_comment_text(value, max_length=1000):
     if len(text) > max_length:
         text = text[:max_length]
     return text
-
 
 def sanitize_generic_text(value, max_length=255):
     if value is None:
@@ -137,10 +134,13 @@ def sanitize_generic_text(value, max_length=255):
         return None
     return value
 
-
 @app.context_processor
 def inject_csrf_token():
     return {'csrf_token': get_csrf_token()}
+
+@app.context_processor
+def inject_config():
+    return {'ALLOW_ADD_YOUTUBE_VIDEO': config.ALLOW_ADD_YOUTUBE_VIDEO}
 
 @app.before_request
 def protect_state_changing_requests():
@@ -402,12 +402,16 @@ def visit_channel(channel_name):
                                    own_profile= session["user"] == channel_name, 
                                    hostURL=host_url,
                                    connected = "user" in session,
-                                   is_following = get_if_follow_channel(session["user"], channel_name))
+                                   is_following = get_if_follow_channel(session["user"], channel_name),
+                                    ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
+                                    ALLOW_UPDATE_CHANNEL = config.ALLOW_UPDATE_CHANNEL)
     return render_template("html/visit_channel.html", 
                            name=channel_name, 
                            own_profile=False, 
                            hostURL=host_url,
-                           connected = "user" in session)
+                           connected = "user" in session,
+                           ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
+                           ALLOW_UPDATE_CHANNEL = config.ALLOW_UPDATE_CHANNEL)
 
 @app.route('/api/followedvideos/<offset>')
 def followedvideos(offset):
@@ -444,6 +448,11 @@ def userfollowedlist():
 
 @app.route('/edit/<channel_name>/<video_id>')
 def edit(channel_name, video_id):
+    if not "user" in session:
+        return redirect(url_for('home'))
+    if not session["user"] == channel_name:
+        return redirect(url_for('home'))
+    
     parameters = get_param_of_video(video_id)
     return render_template("html/edit_video.html",
                            is_hidden = parameters[0],
@@ -519,7 +528,6 @@ def watch(video_id):
     if not is_video_in_db(video_id) : return redirect(url_for('home'))
 
     is_youtube_video = get_is_youtube_video(video_id)
-    print(is_youtube_video)
     if request.method == 'POST':
         # print(request.form["cmmnt"])
         if "user" in session:
@@ -563,6 +571,11 @@ def watch(video_id):
 
 @app.route('/upload_pfp', methods=['GET', 'POST'])
 def upload_pfp():
+
+    if not config.ALLOW_PFP_UPLOAD:
+        flash("ALLOW_PFP_UPLOAD = False")
+        return redirect(url_for('home'))
+
     if "user" in session: 
         if request.method == 'POST':
             # check if the post request has the file part
@@ -600,6 +613,11 @@ def upload_pfp():
 
 @app.route('/update_channel', methods=['GET', 'POST'])
 def update_channel():
+
+    if not config.ALLOW_UPDATE_CHANNEL:
+        flash("ALLOW_UPDATE_CHANNEL = False")
+        return redirect(url_for('home'))
+
     if "user" in session: 
         if request.method == 'POST':
             new_channel_url = validate_public_server_url(request.form.get("newchannelurl", ""))
@@ -663,6 +681,11 @@ def normalize_youtube_id(value):
 
 @app.route('/add_youtube_video', methods=['GET', 'POST'])
 def add_youtube_video():
+
+    if not config.ALLOW_ADD_YOUTUBE_VIDEO:
+        flash("ALLOW_ADD_YOUTUBE_VIDEO = False")
+        return redirect(url_for('home'))
+
     if request.method == 'POST':
 
         if is_rate_limited(request.remote_addr):

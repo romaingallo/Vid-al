@@ -1,1 +1,4 @@
 database_password = None
+ALLOW_PFP_UPLOAD = False
+ALLOW_UPDATE_CHANNEL = False
+ALLOW_ADD_YOUTUBE_VIDEO = False
