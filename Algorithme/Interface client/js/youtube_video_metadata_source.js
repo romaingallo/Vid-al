@@ -31,7 +31,7 @@ async function showMetadata() {
         pfpElement.src = `/pfp_of/${channel}`;
         pfpElement.alt = `${channel} pfp`;
         subElement.src = channelurl;
-        subElement.innerText = `${channel} • xxx vues • xxx jours`;
+        subElement.innerText = `${channel} ` + subElement.innerText;
 
     } else {
         console.warn('Aucun paramètre video dans l\'URL');

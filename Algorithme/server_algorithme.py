@@ -13,10 +13,11 @@ import hmac
 import secrets
 import ipaddress
 import socket
-from urllib.parse import urlsplit, urlunsplit, urlparse, parse_qs
+from urllib.parse import urlsplit, urlunsplit
 from dotenv import load_dotenv
 import re
 from collections import defaultdict
+from utils import *
 
 INTERFACE_DIR = os.path.join(os.path.dirname(__file__), 'Interface client')
 load_dotenv()
@@ -25,7 +26,7 @@ app.secret_key = os.environ["FLASK_SECRET_KEY"]
 app.permanent_session_lifetime = timedelta(minutes=5)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'Interface client', 'images', 'profile_pictures')
+app.config['UPLOAD_FOLDER'] = config.pfp_upload_folder
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000 # max upload file size = 16 megabytes
 # CORS(app)  # autorise toutes les origines (adapter en prod)
@@ -37,8 +38,6 @@ LOGIN_MAX_FAILURES = 5
 LOGIN_WINDOW_SECONDS = 15 * 60
 login_attempts = {}
 login_attempts_lock = threading.Lock()
-
-YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -545,17 +544,16 @@ def watch(video_id):
     username = ''
     green_state = 'green0'
     red_state   = 'red0'
+    nb_views = get_video_views(video_id)
+    if not nb_views : nb_views = 0
     if not is_youtube_video:
         author_username, host_url, _ = get_author_info_from_video(video_id)
         reaction_result = get_reactions_on_video(video_id)
-        nb_views = get_video_views(video_id)
         comments = get_comments_of_video(video_id)
         is_following = get_if_follow_channel(username, author_username)
-        if nb_views == False : nb_views = 0
     else :
-        author_username, host_url = "author_username", "host_url"
+        author_username, host_url = "", "host_url"
         reaction_result = {"likes" : "likes", "dislikes" : "dislikes"}
-        nb_views = "nb_views"
         comments = []
         is_following = False
     if "user" in session: 
@@ -662,31 +660,6 @@ def update_channel():
                                connected = "user" in session)
     return redirect(url_for('login'))
 
-def normalize_youtube_id(value):
-    if value is None:
-        return None
-
-    value = str(value).strip()
-
-    if not value:
-        return None
-
-    if "youtube.com" in value or "youtu.be" in value:
-        try:
-            parsed = urlparse(value)
-            if "youtu.be" in parsed.netloc:
-                video_id = parsed.path.strip("/")
-                return video_id if YOUTUBE_ID_RE.fullmatch(video_id) else None
-
-            if "youtube.com" in parsed.netloc:
-                qs = parse_qs(parsed.query)
-                video_id = qs.get("v", [None])[0]
-                return video_id if video_id and YOUTUBE_ID_RE.fullmatch(video_id) else None
-        except Exception:
-            return None
-
-    return value if YOUTUBE_ID_RE.fullmatch(value) else None
-
 @app.route('/add_youtube_video', methods=['GET', 'POST'])
 def add_youtube_video():
 
@@ -745,6 +718,7 @@ def add_youtube_video():
         insert_succesfull = insert_new_youtube_video(video_id)
         # print(video_info_resp.json())
         if insert_succesfull :
+            update_youtube_video_stats_with_api(video_id)
             flash(f"Video added !")
             # author_name = video_info_resp.json()['author_name']
             # author_url  = video_info_resp.json()['author_url']

@@ -16,28 +16,32 @@
 
         <div class="videopanel">
             {% if is_youtube_video %}
-            <iframe
-                width="640"
-                height="360"
-                src="https://www.youtube.com/embed/{{ videoId }}"
-                frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen>
-            </iframe>
+            <div class="video-container">
+                <iframe
+                    width="640"
+                    height="360"
+                    src="https://www.youtube.com/embed/{{ videoId }}"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                </iframe>
+            </div>
             {% else %}
-            <video 
-                id="video" 
-                controls 
-                autoplay="true" preload="auto"
-                class="video-js vjs-big-play-centered"
-                width="640"
-                height="360"
-            >
-            </video>
+            <div class="video-container">
+                <video 
+                    id="video" 
+                    controls 
+                    autoplay="true" preload="auto"
+                    class="video-js vjs-big-play-centered"
+                    width="640"
+                    height="360"
+                >
+                </video>
+            </div>
             {% endif %}
             <div class="info">
                 <div><a id="title" class="title">Titre de la vidéo exemple #xxx</a></div>
-                <div>
+                <div class="secondinfo">
                     <a id="channel_link" href="/visit_channel/{{name}}"> <img id="pfp" class="pfpwatch" src="/pfp_of/{{name}}" alt="{{name}} pfp"></a>
                     <a id="sub" class="subtitle" href="/visit_channel/{{name}}">{{name}} • {{nb_views}} vues • xxx jours</a>
                     {% if connected %}
@@ -57,7 +61,7 @@
                     {% endif %}
                 </div>
             </div>
-            <div id="description">Description</div>
+            <div id="description">Description feature not implememted yet</div>
             {% if connected %}
             <form action="#" method="post" class="form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

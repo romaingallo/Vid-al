@@ -1,5 +1,7 @@
 from googleapiclient.discovery import build
 import os
+import feedparser
+from utils import normalize_youtube_id
 
 def get_one_video_stats(video_id, force_api_key=None):
     """
@@ -65,3 +67,22 @@ def get_videos_stats(video_ids, force_api_key=None):
                 }
 
     return results
+
+
+def get_rss_feed(channel_id):
+    rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+
+    feed = feedparser.parse(rss_url)
+
+    videos_id = []
+    for entry in feed.entries:
+        # print(f"Titre: {entry.title}")
+        # print(f"URL: {entry.link}")
+        # print(f"Date de publication: {entry.published}")
+        # print(f"Miniature: {entry.media_thumbnail[0]['url']}")
+        # print("---")
+        videos_id.append(normalize_youtube_id(entry.link))
+    return videos_id
+
+if __name__ == "__main__" :
+    print(get_rss_feed("UCROW1J2NQhg1Cd8y_XZ8e1g"))

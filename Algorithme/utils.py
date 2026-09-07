@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from werkzeug.utils import secure_filename
 import re
 import os
+from urllib.parse import urlparse, parse_qs
 
 
 def convert_sql_output_to_list_for_card(data_input):
@@ -86,6 +87,34 @@ def get_youtuber_pfp_from_video_id(author_name, author_url, upload_folder):
         print(f"Erreur lors du téléchargement de l'image : {e}")
         return False
 
+
+def normalize_youtube_id(value):
+
+    YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+    if value is None:
+        return None
+
+    value = str(value).strip()
+
+    if not value:
+        return None
+
+    if "youtube.com" in value or "youtu.be" in value:
+        try:
+            parsed = urlparse(value)
+            if "youtu.be" in parsed.netloc:
+                video_id = parsed.path.strip("/")
+                return video_id if YOUTUBE_ID_RE.fullmatch(video_id) else None
+
+            if "youtube.com" in parsed.netloc:
+                qs = parse_qs(parsed.query)
+                video_id = qs.get("v", [None])[0]
+                return video_id if video_id and YOUTUBE_ID_RE.fullmatch(video_id) else None
+        except Exception:
+            return None
+
+    return value if YOUTUBE_ID_RE.fullmatch(value) else None
 
 if __name__ == '__main__':
     get_youtuber_pfp_from_video_id("RQWpF2Gb-gU", "3Blue1Brown", os.path.join(os.path.dirname(__file__), 'Interface client', 'images', 'profile_pictures'))

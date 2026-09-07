@@ -123,6 +123,7 @@
   height: 50px;
   border-radius: 50%;
   object-fit: cover;
+  vertical-align: middle;
 }
 
 .subtitle {
@@ -173,4 +174,21 @@
     font-weight: normal; /* Pas en gras */
     margin-left: 8px; /* Espace entre le nom et la date */
     font-size: 0.9em; /* Légèrement plus petit que le nom */
+}
+
+
+
+/* Video container */
+
+.video-container {
+    width: 100%; 
+    max-width: 1200px; 
+    margin: 0 auto; 
+}
+
+.video-container iframe,
+.video-container video {
+    width: 100%; 
+    height: auto; 
+    aspect-ratio: 16/9; 
 }

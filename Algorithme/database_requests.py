@@ -4,7 +4,8 @@ import hashlib
 from time import sleep
 from utils import *
 import config
-from youtube_api import get_one_video_stats, get_videos_stats
+from youtube_api import get_one_video_stats, get_videos_stats, get_rss_feed
+import requests as req
 
 def connection():
     conn = psycopg2.connect(
@@ -703,6 +704,7 @@ def is_video_in_db(video_id):
     close_connection(cur, conn)
     return res != None
 
+# do not spam:
 def update_youtube_video_stats_with_api(video_id, force_api_key=None):
     if not get_is_youtube_video(video_id):
         raise ValueError(f"This video_id is not registered as a youtube video. video_id={video_id}")
@@ -730,6 +732,7 @@ def get_all_youtube_videos():
     result = [res[0] for res in result]
     return result
 
+# do not spam:
 def update_all_youtube_video_stats_with_api(force_api_key=None):
     videos_id_list = get_all_youtube_videos()
 
@@ -747,6 +750,62 @@ def update_all_youtube_video_stats_with_api(force_api_key=None):
             ;""", [videos_stats[video_id]["view_count"], videos_stats[video_id]["like_count"], video_id])
     close_connection(cur, conn)
     return
+
+# do not spam:
+def update_youtube_videos_stats_from_list_with_api(list_of_video_id, force_api_key=None):
+
+    videos_stats = get_videos_stats(list_of_video_id, force_api_key)
+
+    cur, conn = connection()
+    for video_id in videos_stats:
+        if not videos_stats[video_id]["view_count"].isnumeric() or not  videos_stats[video_id]["like_count"].isnumeric():
+            print(f"Error while accessing youtube stats. video_id={video_id}")
+            continue
+
+        cur.execute("""UPDATE videos v
+            SET youtube_views=%s , youtube_likes=%s
+            WHERE v.videourl=%s
+            ;""", [videos_stats[video_id]["view_count"], videos_stats[video_id]["like_count"], video_id])
+    close_connection(cur, conn)
+    return
+
+# do not spam:
+def get_and_insert_all_video_from_youtube_channel(channel_id, force_api_key=None):
+
+    list_of_video_id = get_rss_feed(channel_id)
+    number_of_videos = len(list_of_video_id)
+    number_of_successfully_inserted_videos = 0
+
+    for video_id in list_of_video_id:
+
+        video_info_resp = req.get(
+                    f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
+                    timeout=5,
+                    allow_redirects=False)
+                
+        if video_info_resp.status_code != 200:
+            continue
+        
+        content_type = video_info_resp.headers.get("Content-Type", "")
+        if "application/json" not in content_type and not video_info_resp.text.strip().startswith("{"):
+            continue
+
+        payload = video_info_resp.json()
+        author_name = payload.get("author_name")
+        author_url = payload.get("author_url")
+        if not author_name or not author_url:
+            continue
+        
+        insert_succesfull = insert_new_youtube_video(video_id)
+        if insert_succesfull :
+            number_of_successfully_inserted_videos += 1
+            if not youtuber_pfp_in_db(author_name, config.pfp_upload_folder):
+                get_youtuber_pfp_from_video_id(author_name, author_url, config.pfp_upload_folder)
+
+    update_youtube_videos_stats_from_list_with_api(list_of_video_id, force_api_key)
+
+    return f"{number_of_successfully_inserted_videos}/{number_of_videos}"
+
 
 def can_user_update_channel(username):
     cur, conn = connection()
@@ -790,11 +849,12 @@ if __name__ == "__main__" :
     # print(add_tag_for_user_followed('pyhon', 'One'))
     # [print(vid) for vid in get_videos(False, 15, 0)]
 
-    # print("Enter youtube API key :")
-    # force_api_key = input()
+    print("Enter youtube API key :")
+    force_api_key = input()
     # # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
     # # print(get_all_youtube_videos())
     # update_all_youtube_video_stats_with_api(force_api_key)
+    print(get_and_insert_all_video_from_youtube_channel("UCJisX5g6Vt6vlfqzFE_7jjw", force_api_key))
 
     # print(can_user_update_channel("One"))
-    print(can_user_add_youtube_video("One"))
+    # print(can_user_add_youtube_video("One"))
