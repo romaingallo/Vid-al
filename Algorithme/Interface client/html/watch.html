@@ -33,8 +33,8 @@
                     controls 
                     autoplay="true" preload="auto"
                     class="video-js vjs-big-play-centered"
-                    width="640"
-                    height="360"
+                    width="1200"
+                    height="675"
                 >
                 </video>
             </div>
@@ -61,7 +61,11 @@
                     {% endif %}
                 </div>
             </div>
-            <div id="description">Description feature not implememted yet</div>
+            {% if is_youtube_video %}
+                <div id="description">Youtube description feature not implememted yet</div>
+            {% else %}
+                <div id="description">No description</div>
+            {% endif %}
             {% if connected %}
             <form action="#" method="post" class="form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

@@ -6,6 +6,7 @@ from utils import *
 import config
 from youtube_api import get_one_video_stats, get_videos_stats, get_rss_feed
 import requests as req
+from datetime import datetime
 
 def connection():
     conn = psycopg2.connect(
@@ -283,23 +284,41 @@ def update_channel_url(url, username):
         ;""", [url, username])
     close_connection(cur, conn)
 
-def add_video(video_id, username):
+def add_video(video_id, username, first_upload_date = None):
+    """
+    first_upload_date prend un string format YYYY-MM-DD "2026-09-08"
+    """
     user_pk = get_user_pk_from_username(username)
     if user_pk is None : raise ValueError("user 'One' not found")
     cur, conn = connection()
-    cur.execute("""INSERT INTO public.videos (videourl, user_pk)
-                VALUES (%s, %s)
-                ON CONFLICT (videourl) DO UPDATE
-                SET user_pk = EXCLUDED.user_pk
-            ;""", [video_id, user_pk])
+    if not first_upload_date:
+        cur.execute("""INSERT INTO public.videos (videourl, user_pk)
+                    VALUES (%s, %s)
+                    ON CONFLICT (videourl) DO UPDATE
+                    SET user_pk = EXCLUDED.user_pk
+                ;""", [video_id, user_pk])
+    else:
+        cur.execute("""INSERT INTO public.videos (videourl, user_pk, first_upload)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (videourl) DO UPDATE
+                            SET user_pk = EXCLUDED.user_pk
+                        ;""", [video_id, user_pk, first_upload_date])
     close_connection(cur, conn)
 
-def insert_new_youtube_video(video_id):
+def insert_new_youtube_video(video_id, first_upload_date = None):
+    """
+    first_upload_date prend un string format YYYY-MM-DD "2026-09-08"
+    """
     try:
         cur, conn = connection()
-        cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video)
-                    VALUES (%s,true)
-                    ;""", [video_id])
+        if not first_upload_date:
+            cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video)
+                        VALUES (%s,true)
+                        ;""", [video_id])
+        else:
+            cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video, first_upload)
+                                    VALUES (%s,true, %s)
+                                    ;""", [video_id, first_upload_date])
         close_connection(cur, conn)
         return True
     except:
@@ -771,38 +790,46 @@ def update_youtube_videos_stats_from_list_with_api(list_of_video_id, force_api_k
 
 # do not spam:
 def get_and_insert_all_video_from_youtube_channel(channel_id, force_api_key=None):
+    """
+    Request RSS feed, and for each video
+    """
 
-    list_of_video_id = get_rss_feed(channel_id)
-    number_of_videos = len(list_of_video_id)
+    list_of_video_data = get_rss_feed(channel_id)
+    number_of_videos = len(list_of_video_data)
     number_of_successfully_inserted_videos = 0
 
-    for video_id in list_of_video_id:
+    # print("list_of_video_data :")
+    # [print(vid) for vid in list_of_video_data]
 
-        video_info_resp = req.get(
-                    f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
-                    timeout=5,
-                    allow_redirects=False)
-                
-        if video_info_resp.status_code != 200:
-            continue
-        
-        content_type = video_info_resp.headers.get("Content-Type", "")
-        if "application/json" not in content_type and not video_info_resp.text.strip().startswith("{"):
-            continue
+    list_of_video_id_to_update = []
 
-        payload = video_info_resp.json()
-        author_name = payload.get("author_name")
-        author_url = payload.get("author_url")
+    for video_data in list_of_video_data:
+
+        if is_video_in_db(video_data["video_id"]): continue
+
+
+        author_name = video_data["author_name"]
+        author_url = video_data["author_url"]
         if not author_name or not author_url:
             continue
-        
-        insert_succesfull = insert_new_youtube_video(video_id)
+
+        list_of_video_id_to_update.append(video_data["video_id"])
+
+        first_upload_date = video_data["first_upload_date"]
+        try:
+            date_obj = datetime.fromisoformat(first_upload_date)
+            formatted_date = date_obj.strftime("%Y-%m-%d")
+        except:
+            formatted_date = None
+        insert_succesfull = insert_new_youtube_video(video_data["video_id"], formatted_date)
         if insert_succesfull :
             number_of_successfully_inserted_videos += 1
             if not youtuber_pfp_in_db(author_name, config.pfp_upload_folder):
                 get_youtuber_pfp_from_video_id(author_name, author_url, config.pfp_upload_folder)
 
-    update_youtube_videos_stats_from_list_with_api(list_of_video_id, force_api_key)
+    # print("list_of_video_id_to_update :")
+    # [print(vid) for vid in list_of_video_id_to_update]
+    update_youtube_videos_stats_from_list_with_api(list_of_video_id_to_update, force_api_key)
 
     return f"{number_of_successfully_inserted_videos}/{number_of_videos}"
 
@@ -854,7 +881,7 @@ if __name__ == "__main__" :
     # # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
     # # print(get_all_youtube_videos())
     # update_all_youtube_video_stats_with_api(force_api_key)
-    print(get_and_insert_all_video_from_youtube_channel("UCJisX5g6Vt6vlfqzFE_7jjw", force_api_key))
+    print(get_and_insert_all_video_from_youtube_channel("UCOKHwx1VCdgnxwbjyb9Iu1g", force_api_key))
 
     # print(can_user_update_channel("One"))
     # print(can_user_add_youtube_video("One"))

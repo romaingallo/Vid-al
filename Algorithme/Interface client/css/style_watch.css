@@ -192,3 +192,8 @@
     height: auto; 
     aspect-ratio: 16/9; 
 }
+
+.video-dimensions {
+    width: 100%;
+    aspect-ratio: 16/9; 
+}

@@ -74,15 +74,28 @@ def get_rss_feed(channel_id):
 
     feed = feedparser.parse(rss_url)
 
-    videos_id = []
+    videos_data = []
     for entry in feed.entries:
         # print(f"Titre: {entry.title}")
         # print(f"URL: {entry.link}")
         # print(f"Date de publication: {entry.published}")
         # print(f"Miniature: {entry.media_thumbnail[0]['url']}")
+        video_id = entry.get('yt_videoid', {})
+        # channel_id_entry = entry.get('yt_channelid', {})
+        author_name = entry.get('author', {})
+        author_url = entry.author_detail['href']
+        # print(f"Video id: {video_id}")
+        # print(f"channelId: {channel_id_entry}")
+        # print(f"author name: {author_name}")
+        # print(author_url)
         # print("---")
-        videos_id.append(normalize_youtube_id(entry.link))
-    return videos_id
+        data = {"video_id":normalize_youtube_id(entry.link),
+                "author_name":author_name,
+                "author_url":author_url,
+                "first_upload_date":entry.get('published', None)}
+        if not data["video_id"] or not data["author_name"] or not data["author_url"] : continue
+        videos_data.append(data)
+    return videos_data
 
 if __name__ == "__main__" :
-    print(get_rss_feed("UCROW1J2NQhg1Cd8y_XZ8e1g"))
+    [print(viddata) for viddata in get_rss_feed("UCROW1J2NQhg1Cd8y_XZ8e1g")]
