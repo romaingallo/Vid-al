@@ -43,7 +43,7 @@
                 <div><a id="title" class="title">Titre de la vidéo exemple #xxx</a></div>
                 <div class="secondinfo">
                     <a id="channel_link" href="/visit_channel/{{name}}"> <img id="pfp" class="pfpwatch" src="/pfp_of/{{name}}" alt="{{name}} pfp"></a>
-                    <a id="sub" class="subtitle" href="/visit_channel/{{name}}">{{name}} • {{nb_views}} vues • xxx jours</a>
+                    <a id="sub" class="subtitle" href="/visit_channel/{{name}}">{{name}} • {{nb_views}} vues{{first_upload_date_text}}{%if not connected and is_youtube_video %} • {{ youtube_likes }} likes from Youtube{% endif %}</a>
                     {% if connected %}
                         <div class="actions">
                             <button id="btn-like" class="btn {{green_state}}" aria-pressed="false">
@@ -52,10 +52,14 @@
                             <button id="btn-dislike" class="btn {{red_state}}" aria-pressed="false">
                                 Dislike <span id="dislike-count">{{nb_dislikes}}</span>
                             </button>
-                            {% if is_following %}
-                            <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Unfollow</button>
+                            {% if not is_youtube_video %}
+                                {% if is_following %}
+                                <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Unfollow</button>
+                                {% else %}
+                                <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Follow</button>
+                                {% endif %}
                             {% else %}
-                            <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Follow</button>
+                                + {{ youtube_likes }} likes from Youtube
                             {% endif %}
                         </div>
                     {% endif %}

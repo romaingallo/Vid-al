@@ -84,14 +84,20 @@ async function loadDataFromYoutube(videoId) {
 const thumbPath = './images/miniatures/miniature0.jpg';
 async function createCard(i, data = null) {
     const is_youtube_video = data?.is_youtube_video ?? `false`;
-    let is_youtube_video_text = ``;
+    let is_youtube_video_icone = ``;
     let thumb = `${data?.hostURL}/thumbnail/${data?.url}`;
     let channel = data?.channel ?? 'Chaîne';
     let title = `Loading title ?`;
     let channelurl = `/visit_channel/${channel}`;
+    let first_upload_date = data?.first_upload;
+    let first_upload_date_text = ``;
+    if (first_upload_date)
+    {
+        first_upload_date_text = ` • ${first_upload_date}`;
+    }
     if (is_youtube_video == true) 
         {
-            is_youtube_video_text = " • youtube";
+            is_youtube_video_icone = `<img class="isfromyoutubeicon" src="/images/favicon.ico" alt="From Youtube">`;
             thumb = `https://i.ytimg.com/vi/${data?.url}/hqdefault.jpg`;
             const data_from_youtube = await loadDataFromYoutube(data?.url);
             title = data_from_youtube?.title ?? `Erreur de titre`;
@@ -117,9 +123,10 @@ async function createCard(i, data = null) {
             <div class="meta">
                 <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                 <div class="info">
-                    <div><a class="title" href="${url}">${title}</a></div>
-                    <div><a class="sub" href="${channelurl}">${channel} • ${views} vues • ${likes} likes${is_youtube_video_text}</a></div>
+                    <div><a class="title" title="${title}"  href="${url}">${title}</a></div>
+                    <div><a class="sub" href="${channelurl}">${channel} • ${views} views • ${likes} likes${first_upload_date_text}</a></div>
                 </div>
+                ${is_youtube_video_icone}
             </div>
         `;
         if (typeof own_profile !== 'undefined') {
@@ -129,8 +136,8 @@ async function createCard(i, data = null) {
                     <div class="meta">
                         <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                         <div class="info">
-                            <div><a class="title" href="${url}">${title}</a></div>
-                            <div><a class="sub" href="${channelurl}">${channel} • ${views} vues • ${likes} likes</a></div>
+                            <div><a class="title" title="${title}" href="${url}">${title}</a></div>
+                            <div><a class="sub" href="${channelurl}">${channel} • ${views} views • ${likes} likes${first_upload_date_text}</a></div>
                         </div>
                         <a class="editlink" href="${editvideourl}"><img class="editicon" src="/images/edit.svg" alt="Edit"></a>
                     </div>

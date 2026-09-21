@@ -14,13 +14,20 @@ def convert_sql_output_to_list_for_card(data_input):
     # ]
     data_output = []
     for video_data in data_input:
+
+        # Date time
+        first_upload_date = None
+        if video_data[8]:
+            first_upload_date = video_data[8].strftime("%d/%m/%Y")
+
         data_output.append({"channel": video_data[1], 
                             "views": str(video_data[3]), 
                             "likes": f"{video_data[2]}", 
                             "url": video_data[0], 
                             "hostURL":video_data[4], 
                             "is_hidden":video_data[6],
-                            "is_youtube_video":video_data[7]})
+                            "is_youtube_video":video_data[7],
+                            "first_upload":first_upload_date})
     return data_output
 
 

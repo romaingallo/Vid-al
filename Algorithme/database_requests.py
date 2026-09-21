@@ -4,7 +4,7 @@ import hashlib
 from time import sleep
 from utils import *
 import config
-from youtube_api import get_one_video_stats, get_videos_stats, get_rss_feed
+from youtube_api import get_one_video_stats, fetch_videos_stats, get_rss_feed
 import requests as req
 from datetime import datetime
 
@@ -69,7 +69,8 @@ def get_videos(username, limit, offset):
                COALESCE(u.channel_url, '')  AS channel_url,
                COALESCE(lc.nb_dislikes, 0)  AS nb_dislikes,
                v.is_hidden, 
-               v.is_youtube_video
+               v.is_youtube_video,
+               v.first_upload
         FROM videos v
         LEFT JOIN users u ON v.user_pk = u.user_pk 
         LEFT JOIN (
@@ -111,7 +112,8 @@ def get_all_videos_from_channel(channel_usename, limit, offset):
                u.channel_url               AS channel_url,
                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
                v.is_hidden, 
-               v.is_youtube_video
+               v.is_youtube_video,
+               v.first_upload
         FROM videos v
         JOIN users u ON v.user_pk = u.user_pk
         LEFT JOIN (
@@ -368,19 +370,38 @@ def add_view(username, video_id):
     close_connection(cur, conn)
     return True, "View added successfully"
 
-def get_video_views(video_id):
+def get_video_data(video_id):
     cur, conn = connection()
-    cur.execute("SELECT v.videourl,"\
-        "COUNT(has_been_viewed_by) + COALESCE(v.youtube_views, 0) as nb_views "\
-        "FROM videos v " \
-        "LEFT JOIN has_been_viewed_by ON v.videourl = has_been_viewed_by.videourl " \
-        "WHERE v.videourl = %s " \
-        "GROUP BY v.videourl;"
+    cur.execute("""SELECT   v.videourl,
+                            COUNT(has_been_viewed_by) + COALESCE(v.youtube_views, 0) as nb_views,
+                            v.first_upload,
+                            v.is_youtube_video,
+                            v.youtube_likes
+                    FROM videos v
+                    LEFT JOIN has_been_viewed_by ON v.videourl = has_been_viewed_by.videourl
+                    WHERE v.videourl = %s
+                    GROUP BY v.videourl;"""
         ,[video_id])
     result = cur.fetchall()
     close_connection(cur, conn)
     if len(result) == 0 : return False
-    return result[0][1]
+    result = result[0]
+
+    author_username, host_url = "", "youtube_url"
+    if not result[3]: # If is not video youtube
+        author_username, host_url, _ = get_author_info_from_video(video_id)
+
+    first_upload_date = None
+    if result[2]:
+        first_upload_date = result[2].strftime("%d/%m/%Y")
+    dict_result = {"videourl": result[0],
+                   "nb_of_views": result[1],
+                   "first_upload_date": first_upload_date,
+                   "is_youtube_video": result[3],
+                   "youtube_likes": result[4],
+                   "author_username": author_username,
+                   "host_url": host_url}
+    return dict_result
 
 def get_comments_of_video(video_id):
     cur, conn = connection()
@@ -541,7 +562,8 @@ def get_followed_videos(follower_username, limit, offset):
                     u.channel_url               AS channel_url,
                     COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
                     v.is_hidden, 
-                    v.is_youtube_video
+                    v.is_youtube_video,
+                    v.first_upload
                 FROM videos v
                 JOIN users u ON v.user_pk = u.user_pk
                 LEFT JOIN (
@@ -755,7 +777,7 @@ def get_all_youtube_videos():
 def update_all_youtube_video_stats_with_api(force_api_key=None):
     videos_id_list = get_all_youtube_videos()
 
-    videos_stats = get_videos_stats(videos_id_list, force_api_key)
+    videos_stats = fetch_videos_stats(videos_id_list, force_api_key)
 
     cur, conn = connection()
     for video_id in videos_stats:
@@ -773,7 +795,7 @@ def update_all_youtube_video_stats_with_api(force_api_key=None):
 # do not spam:
 def update_youtube_videos_stats_from_list_with_api(list_of_video_id, force_api_key=None):
 
-    videos_stats = get_videos_stats(list_of_video_id, force_api_key)
+    videos_stats = fetch_videos_stats(list_of_video_id, force_api_key)
 
     cur, conn = connection()
     for video_id in videos_stats:
@@ -876,12 +898,16 @@ if __name__ == "__main__" :
     # print(add_tag_for_user_followed('pyhon', 'One'))
     # [print(vid) for vid in get_videos(False, 15, 0)]
 
-    print("Enter youtube API key :")
-    force_api_key = input()
-    # # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
-    # # print(get_all_youtube_videos())
-    # update_all_youtube_video_stats_with_api(force_api_key)
-    print(get_and_insert_all_video_from_youtube_channel("UCOKHwx1VCdgnxwbjyb9Iu1g", force_api_key))
+    # print("Enter youtube API key :")
+    # force_api_key = input()
+    # # # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
+    # # # print(get_all_youtube_videos())
+    # # update_all_youtube_video_stats_with_api(force_api_key)
+    # print(get_and_insert_all_video_from_youtube_channel("UCOKHwx1VCdgnxwbjyb9Iu1g", force_api_key))
 
     # print(can_user_update_channel("One"))
     # print(can_user_add_youtube_video("One"))
+
+    print(get_video_data("Bird"))
+    print(get_video_data("hnzMih9HWEE"))
+    

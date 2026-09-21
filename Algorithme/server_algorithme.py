@@ -529,9 +529,10 @@ def search_for_tag():
 @app.route('/watch/<video_id>', methods=['GET', 'POST'])
 def watch(video_id):
     if not sanitize_generic_text(video_id, 255) : return redirect(url_for('home'))
-    if not is_video_in_db(video_id) : return redirect(url_for('home'))
+    if not is_video_in_db(video_id) : 
+        flash("Video not found.")
+        return redirect(url_for('home'))
 
-    is_youtube_video = get_is_youtube_video(video_id)
     if request.method == 'POST':
         # print(request.form["cmmnt"])
         if "user" in session:
@@ -539,22 +540,28 @@ def watch(video_id):
             if comment_text:
                 add_comment_on_video(video_id, session["user"], comment_text)
         else:
-            print("Error : tried to post comment without being connected")
+            flash("Error : tried to post comment without being connected")
         
     username = ''
     green_state = 'green0'
     red_state   = 'red0'
-    nb_views = get_video_views(video_id)
+    video_data = get_video_data(video_id)
+    nb_views = video_data["nb_of_views"]
+    is_youtube_video = video_data["is_youtube_video"]
+    author_username, host_url = video_data["author_username"], video_data["host_url"]
+    first_upload_date = video_data["first_upload_date"]
+    youtube_likes = video_data["youtube_likes"]
+
+    first_upload_date_text = ''
+    if first_upload_date:
+        first_upload_date_text = f" • {first_upload_date}"
+    
+    reaction_result = get_reactions_on_video(video_id)
+    comments = get_comments_of_video(video_id)
     if not nb_views : nb_views = 0
     if not is_youtube_video:
-        author_username, host_url, _ = get_author_info_from_video(video_id)
-        reaction_result = get_reactions_on_video(video_id)
-        comments = get_comments_of_video(video_id)
         is_following = get_if_follow_channel(username, author_username)
     else :
-        author_username, host_url = "", "host_url"
-        reaction_result = {"likes" : "likes", "dislikes" : "dislikes"}
-        comments = []
         is_following = False
     if "user" in session: 
         username = session["user"]
@@ -562,6 +569,7 @@ def watch(video_id):
         like_state = get_user_has_liked_for_json(video_id, username)
         if like_state == 'like': green_state = 'green100'
         elif like_state == 'dislike' : red_state = 'red100'
+
     return render_template("html/watch.html", 
                            videoId = video_id, 
                            nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], nb_views = nb_views,
@@ -570,7 +578,9 @@ def watch(video_id):
                            hostURL = host_url,
                            comments = comments, lencomments = len(comments), connected = "user" in session, username = username,
                            is_following = is_following,
-                           is_youtube_video = is_youtube_video)
+                           is_youtube_video = is_youtube_video,
+                           first_upload_date_text = first_upload_date_text,
+                           youtube_likes = youtube_likes)
 
 @app.route('/upload_pfp', methods=['GET', 'POST'])
 def upload_pfp():

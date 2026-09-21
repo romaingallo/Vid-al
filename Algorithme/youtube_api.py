@@ -33,7 +33,7 @@ def get_one_video_stats(video_id, force_api_key=None):
     return None, None
 
 
-def get_videos_stats(video_ids, force_api_key=None):
+def fetch_videos_stats(video_ids, force_api_key=None):
     """
     Get view_count and like_count for a list of video_ids (50 vids max per api request).
     Returns a dictionary: {video_id: {"viewCount": ..., "likeCount": ...}}

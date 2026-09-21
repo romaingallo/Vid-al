@@ -141,9 +141,18 @@
     flex: 1;
 }
 .video-card .title {
-    font-size: 14px;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+
+    /* min-height: calc(14px * 1.2 * 2); */
+    max-height: calc(16px * 1.2 * 2);
+
+    font-size: 16px;
     font-weight: 600;
-    margin: 0 0 6px 0;
+    margin: 0 0 0 0;
     color: #111;
     line-height: 1.2;
     text-decoration: none;
@@ -175,6 +184,12 @@
     display: flex; /* Ajoute cette propriété */
     align-items: center; /* Ajoute cette propriété */
     justify-content: center; /* Optionnel : pour centrer aussi horizontalement */
+}
+
+.video-card .isfromyoutubeicon{
+    height: 20px;
+    width: 20px;
+    object-fit: fill;
 }
 
 
