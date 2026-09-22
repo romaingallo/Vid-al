@@ -31,7 +31,7 @@ ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000 # max upload file size = 16 megabytes
 # CORS(app)  # autorise toutes les origines (adapter en prod)
 
-MAX_TAG_NUMBER_ON_VIDEO = 5
+
 NUMBER_OF_VIDEO_PER_FETCH = 6 # -> le fecth javascript fait des offsets de 6, n'est pas lié à cette variable
 
 LOGIN_MAX_FAILURES = 5
@@ -505,7 +505,7 @@ def add_tag():
             if not video_id : return '', 400
             if is_video_from(video_id, session["user"]):
                 list_tags_on_video = get_tags_of_video(video_id)
-                if len(list_tags_on_video)+1 > MAX_TAG_NUMBER_ON_VIDEO: return jsonify({"error": f'The video has already been tagged {MAX_TAG_NUMBER_ON_VIDEO} times (max per video).'}), 500
+                if len(list_tags_on_video)+1 > config.MAX_TAG_NUMBER_ON_VIDEO: return jsonify({"error": f'The video has already been tagged {config.MAX_TAG_NUMBER_ON_VIDEO} times (max per video).'}), 500
                 tag_name = sanitize_tag_name(request.form.get('tag_name'))
                 if not tag_name : return '', 400
                 if tag_name in list_tags_on_video: return jsonify({"error": f'The video has already been tagged {tag_name}.'}), 500
@@ -563,6 +563,7 @@ def watch(video_id):
         is_following = get_if_follow_channel(username, author_username)
     else :
         is_following = False
+        update_video_and_channel_with_delay_check(video_id)
     if "user" in session: 
         username = session["user"]
         add_view(username, video_id)

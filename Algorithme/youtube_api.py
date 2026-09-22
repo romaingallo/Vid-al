@@ -2,6 +2,9 @@ from googleapiclient.discovery import build
 import os
 import feedparser
 from utils import normalize_youtube_id
+import json
+import re
+import urllib.request
 
 def get_one_video_stats(video_id, force_api_key=None):
     """
@@ -31,7 +34,6 @@ def get_one_video_stats(video_id, force_api_key=None):
             return view_count, like_count
 
     return None, None
-
 
 def fetch_videos_stats(video_ids, force_api_key=None):
     """
@@ -68,7 +70,6 @@ def fetch_videos_stats(video_ids, force_api_key=None):
 
     return results
 
-
 def get_rss_feed(channel_id):
     rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
 
@@ -97,5 +98,49 @@ def get_rss_feed(channel_id):
         videos_data.append(data)
     return videos_data
 
+def get_video_tags(video_id):
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+    req = urllib.request.Request(video_url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    html = urllib.request.urlopen(req).read().decode("utf-8")
+    m = re.search(r'"keywords":\[(.*?)\]', html)
+    if not m:
+        return []
+    return json.loads(f"[{m.group(1)}]")
+
+def fetch_channel_id_from_video_id(video_id, force_api_key=None):
+    """
+    Fetch the channel id from a video id via Youtube API
+    """
+    if force_api_key:
+        api_key = force_api_key
+    else:
+        api_key = os.environ["API_KEY"]
+
+    with build('youtube', 'v3', developerKey=api_key) as youtube:
+        request = youtube.videos().list(
+            part="snippet",
+            id=video_id
+        )
+        response = request.execute()
+        # print(response)
+
+        items = response.get("items", [])
+        if not items:
+            return None
+
+        snippet = items[0].get("snippet", {})
+        return snippet.get("channelId")
+
+
 if __name__ == "__main__" :
-    [print(viddata) for viddata in get_rss_feed("UCROW1J2NQhg1Cd8y_XZ8e1g")]
+
+    # print("Enter youtube API key :")
+    # force_api_key = input()
+
+    # [print(viddata) for viddata in get_rss_feed("UCROW1J2NQhg1Cd8y_XZ8e1g")]
+    # get_one_video_stats("RQWpF2Gb-gU", force_api_key)
+    # print(fetch_channel_id_from_video_id("RQWpF2Gb-gU", force_api_key))
+    print(get_video_tags("UiPcEW_d9Io"))

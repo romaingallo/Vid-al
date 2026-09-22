@@ -5,3 +5,5 @@ Hébergeur/Vidéos
 Hébergeur/thumbnail
 Algorithme/Interface client/images/profile_pictures
 .env
+Algorithme/__pycache__/
+Hébergeur/__pycache__/

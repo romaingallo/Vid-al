@@ -4,7 +4,7 @@ import hashlib
 from time import sleep
 from utils import *
 import config
-from youtube_api import get_one_video_stats, fetch_videos_stats, get_rss_feed
+from youtube_api import get_one_video_stats, fetch_videos_stats, get_rss_feed, fetch_channel_id_from_video_id, get_video_tags
 import requests as req
 from datetime import datetime
 
@@ -757,7 +757,7 @@ def update_youtube_video_stats_with_api(video_id, force_api_key=None):
 
     cur, conn = connection()
     cur.execute("""UPDATE videos v
-        SET youtube_views=%s , youtube_likes=%s
+        SET youtube_views=%s , youtube_likes=%s, latest_stat_update=CURRENT_DATE
         WHERE v.videourl=%s
         ;""", [view_count, like_count, video_id])
     close_connection(cur, conn)
@@ -819,6 +819,7 @@ def get_and_insert_all_video_from_youtube_channel(channel_id, force_api_key=None
     list_of_video_data = get_rss_feed(channel_id)
     number_of_videos = len(list_of_video_data)
     number_of_successfully_inserted_videos = 0
+    number_of_videos_already_in_db = 0
 
     # print("list_of_video_data :")
     # [print(vid) for vid in list_of_video_data]
@@ -827,7 +828,9 @@ def get_and_insert_all_video_from_youtube_channel(channel_id, force_api_key=None
 
     for video_data in list_of_video_data:
 
-        if is_video_in_db(video_data["video_id"]): continue
+        if is_video_in_db(video_data["video_id"]):
+            number_of_videos_already_in_db +=1
+            continue
 
 
         author_name = video_data["author_name"]
@@ -848,13 +851,59 @@ def get_and_insert_all_video_from_youtube_channel(channel_id, force_api_key=None
             number_of_successfully_inserted_videos += 1
             if not youtuber_pfp_in_db(author_name, config.pfp_upload_folder):
                 get_youtuber_pfp_from_video_id(author_name, author_url, config.pfp_upload_folder)
+            fetch_and_add_video_tags(video_data["video_id"])
 
     # print("list_of_video_id_to_update :")
     # [print(vid) for vid in list_of_video_id_to_update]
     update_youtube_videos_stats_from_list_with_api(list_of_video_id_to_update, force_api_key)
 
-    return f"{number_of_successfully_inserted_videos}/{number_of_videos}"
+    return f"{number_of_successfully_inserted_videos}/{number_of_videos} , {number_of_videos_already_in_db} videos already in database"
 
+# do not spam
+def schearch_and_insert_latest_videos_from_one_channel_from_video_id(video_id, force_api_key=None):
+    channel_id = fetch_channel_id_from_video_id(video_id)
+    if not channel_id:
+        raise ValueError(f"This video_id does not return a channel_id. video_id={video_id}")
+    print(get_and_insert_all_video_from_youtube_channel(channel_id, force_api_key))
+    return 
+
+def check_delay_between_video_update(video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT latest_stat_update, CURRENT_DATE - latest_stat_update
+                FROM videos
+                WHERE videourl = %s
+                ;""", [video_id])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    if result is None : return result
+
+    days_since_last_update = result[1]
+
+    return config.DAYS_BETWEEN_CURRENT_DATE_AND_LATEST_STAT_UPDATE < days_since_last_update
+
+# do not spam
+def update_video_and_channel_with_delay_check(video_id):
+    if check_delay_between_video_update(video_id):
+        update_youtube_video_stats_with_api(video_id)
+        schearch_and_insert_latest_videos_from_one_channel_from_video_id(video_id)
+
+# do not spam
+def fetch_and_add_video_tags(video_id):
+    if not get_is_youtube_video(video_id):
+        raise ValueError(f"This video is not registered as coming from Youtube. video_id={video_id}")
+    
+    tags_already_on_video = get_tags_of_video(video_id)
+    nb_of_tags = len(tags_already_on_video)
+    if nb_of_tags >= config.MAX_TAG_NUMBER_ON_VIDEO:
+        print(f"This video already has {nb_of_tags} > config.MAX_TAG_NUMBER_ON_VIDEO = {config.MAX_TAG_NUMBER_ON_VIDEO}. video_id={video_id}")
+        return
+    
+    tag_list = get_video_tags(video_id)[:max(config.MAX_TAG_NUMBER_ON_VIDEO-nb_of_tags,0)]
+    # if len(tag_list) == 0: print("tag_list=[]")
+    for tag in tag_list:
+        if tag in tags_already_on_video: continue
+        add_tag_on_video(video_id, tag)
+        # print(video_id, tag)
 
 def can_user_update_channel(username):
     cur, conn = connection()
@@ -908,6 +957,10 @@ if __name__ == "__main__" :
     # print(can_user_update_channel("One"))
     # print(can_user_add_youtube_video("One"))
 
-    print(get_video_data("Bird"))
-    print(get_video_data("hnzMih9HWEE"))
+    # print(get_video_data("Bird"))
+    # print(get_video_data("hnzMih9HWEE"))
+
+    # print(check_delay_between_video_update("hnzMih9HWEE"))
+    # fetch_and_add_video_tags("s28Y8ASchEk")
+    # [fetch_and_add_video_tags(id) for id in get_all_youtube_videos()]
     

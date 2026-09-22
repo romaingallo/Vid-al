@@ -32,6 +32,7 @@ async function showMetadata() {
         pfpElement.alt = `${channel} pfp`;
         subElement.src = channelurl;
         subElement.innerText = `${channel} ` + subElement.innerText;
+        subElement.href = channelurl;
 
     } else {
         console.warn('Aucun paramètre video dans l\'URL');
