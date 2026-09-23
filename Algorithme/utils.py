@@ -27,7 +27,8 @@ def convert_sql_output_to_list_for_card(data_input):
                             "hostURL":video_data[4], 
                             "is_hidden":video_data[6],
                             "is_youtube_video":video_data[7],
-                            "first_upload":first_upload_date})
+                            "first_upload":first_upload_date,
+                            "has_already_been_seen":video_data[9]})
     return data_output
 
 

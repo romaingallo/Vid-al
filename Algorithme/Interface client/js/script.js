@@ -17,7 +17,7 @@ async function loadFromServer() {
     try {
         const rootMarginPx = 400;
         while (true) {
-            let url = '/api/videos/' + offset;
+            let url = '/api/videos';
             if (typeof channel_name !== 'undefined') {
                 url = `/api/channel/${channel_name}/` + offset;
             }
@@ -91,6 +91,12 @@ async function createCard(i, data = null) {
     let channelurl = `/visit_channel/${channel}`;
     let first_upload_date = data?.first_upload;
     let first_upload_date_text = ``;
+    const has_already_been_seen = data?.has_already_been_seen ?? false;
+    let has_already_been_seen_icon = ``;
+    if (has_already_been_seen)
+    {
+        has_already_been_seen_icon = `<img class="hasbeenseenicon" title="You have already seen this video." src="/images/check_white.svg" alt="Has been seen">`;
+    }
     if (first_upload_date)
     {
         first_upload_date_text = ` • ${first_upload_date}`;
@@ -119,7 +125,7 @@ async function createCard(i, data = null) {
     const card = document.createElement('article');
         card.className = 'video-card';
         card.innerHTML = `
-            <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}"></a>
+            <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}">${has_already_been_seen_icon}</a>
             <div class="meta">
                 <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                 <div class="info">
@@ -132,7 +138,7 @@ async function createCard(i, data = null) {
         if (typeof own_profile !== 'undefined') {
             if (own_profile) {
                 card.innerHTML = `
-                    <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}"></a>
+                    <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}">${has_already_been_seen_icon}</a>
                     <div class="meta">
                         <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                         <div class="info">

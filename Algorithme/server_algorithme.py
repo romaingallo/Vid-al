@@ -209,6 +209,7 @@ def clear_login_failures(ip_address, username):
 def home():
     # path = os.path.join(os.path.dirname(__file__), '.', 'Interface client', 'main.html')
     # return send_file(os.path.abspath(path))
+    session['seen_videos'] = []
     return render_template('html/main.html',
                            connected = "user" in session)
 
@@ -273,21 +274,27 @@ def logout():
     if "user" in session: session.pop("user", None)
     return redirect(url_for('home'))
 
-@app.route('/api/videos/<offset>')
-def videos(offset):
-    if not offset.isnumeric() : return '', 400
+@app.route('/api/videos')
+def videos():
     NUMBER_OF_VIDEO_PER_FETCH = 6
+    seen = session.get('seen_videos', [])
     if "user" in session: 
-        data = get_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, int(offset))
+        data = get_videos(session["user"], NUMBER_OF_VIDEO_PER_FETCH, seen)
     else:
-        data = get_videos(False, NUMBER_OF_VIDEO_PER_FETCH, int(offset))
+        data = get_videos(False, NUMBER_OF_VIDEO_PER_FETCH, seen)
+    session['seen_videos'] = seen + [v['url'] for v in data]
+
     return jsonify(data)
 
 @app.route('/api/channel/<channelId>/<offset>')
 def channel(channelId, offset):
     if not offset.isnumeric() : return '', 400
     NUMBER_OF_VIDEO_PER_FETCH = 6
-    data = get_all_videos_from_channel(channelId, NUMBER_OF_VIDEO_PER_FETCH, int(offset))
+    if "user" in session: 
+        data = get_all_videos_from_channel(channelId, NUMBER_OF_VIDEO_PER_FETCH, int(offset), session_username=session["user"])
+    else:
+        data = get_all_videos_from_channel(channelId, NUMBER_OF_VIDEO_PER_FETCH, int(offset))
+    
     return jsonify(data)
 
 @app.route('/api/videos/<video_id>/react', methods=['POST'])
@@ -571,6 +578,7 @@ def watch(video_id):
         if like_state == 'like': green_state = 'green100'
         elif like_state == 'dislike' : red_state = 'red100'
 
+    session['seen_videos'] = []
     return render_template("html/watch.html", 
                            videoId = video_id, 
                            nb_likes = reaction_result["likes"], nb_dislikes = reaction_result["dislikes"], nb_views = nb_views,

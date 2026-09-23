@@ -9,6 +9,7 @@
     width: 98%;
     backdrop-filter: blur(10px);
     background-color: #ffffff85;
+    z-index: 10;
 }
 
 .maintitle {
@@ -106,6 +107,11 @@
     flex-direction: column;
 }
 
+.video-card .thumbnaillink {
+    position: relative;
+    display: block;
+}
+
 /* miniature image */
 .video-card .thumbnail {
     width: 100%;
@@ -113,6 +119,21 @@
     object-fit: cover;
     display: block;
 }
+
+/* Icone has been seen */
+.video-card .hasbeenseenicon{
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    z-index: 1;
+
+    height: 20px;
+    width: 20px;
+    object-fit: fill;
+    background-color: #0000008a;
+    border-radius: 50%;
+}
+
 
 .video-card .is_hidden {
     opacity: 50%;

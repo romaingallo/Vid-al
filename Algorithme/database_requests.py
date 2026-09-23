@@ -41,9 +41,78 @@ def close_connection(cur, conn):
 
 #     return convert_sql_output_to_list_for_card(result)
 
-def get_videos(username, limit, offset):
+# def get_videos(username, limit, offset):
+#     cur, conn = connection()
+#     like_scale, view_scale, get_tag_settings, use_tag_settings = 1, 0.1, '', ''
+#     if username :
+#         cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
+#             FROM users
+#             WHERE username = %s
+#             ;""", [username])
+#         like_scale, view_scale, tags_scale = cur.fetchone()
+#         get_tag_settings = '''LEFT JOIN(
+#                     SELECT videourl, COUNT(tcc.tags) AS nb_tags
+#                     FROM has_tag ht 
+#                     INNER JOIN (
+#                             SELECT f.tags
+#                             FROM follow_tags f
+#                             JOIN users u ON u.user_pk = f.user_pk
+#                             WHERE u.username = %s
+#                     ) tcc ON ht.tags = tcc.tags
+#                     GROUP BY videourl
+#             ) tc ON tc.videourl = v.videourl'''
+#         use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
+#     request = f'''SELECT v.videourl,
+#                COALESCE(u.username, 'UnknownFromYoutube') AS username,
+#                COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)    AS nb_likes,
+#                COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0)    AS nb_views,
+#                COALESCE(u.channel_url, '')  AS channel_url,
+#                COALESCE(lc.nb_dislikes, 0)  AS nb_dislikes,
+#                v.is_hidden, 
+#                v.is_youtube_video,
+#                v.first_upload
+#         FROM videos v
+#         LEFT JOIN users u ON v.user_pk = u.user_pk 
+#         LEFT JOIN (
+#             SELECT videourl,
+#                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+#                    COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+#             FROM has_been_liked_by
+#             GROUP BY videourl
+#         ) lc ON lc.videourl = v.videourl
+#         LEFT JOIN (
+#             SELECT videourl, COUNT(*) AS nb_views
+#             FROM has_been_viewed_by
+#             GROUP BY videourl
+#         ) vc ON vc.videourl = v.videourl
+#         {get_tag_settings}
+#         WHERE v.is_hidden = False
+#         ORDER BY (
+#             %s * CBRT( COALESCE(lc.nb_likes,0) + COALESCE(v.youtube_likes, 0) - COALESCE(lc.nb_dislikes,0) ) + %s * ( CBRT( COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0) )  ) {use_tag_settings}
+#         ) DESC,
+#         v.videourl ASC
+#         LIMIT %s OFFSET %s
+#         ;'''
+#     if username:
+#         cur.execute(request, [username, like_scale, view_scale, limit, offset])
+#     else:
+#         cur.execute(request, [like_scale, view_scale, limit, offset])
+#     result = cur.fetchall()
+#     close_connection(cur, conn)
+
+#     return convert_sql_output_to_list_for_card(result)
+
+def get_videos(username, limit, seen_video=[]):
+
     cur, conn = connection()
+
     like_scale, view_scale, get_tag_settings, use_tag_settings = 1, 0.1, '', ''
+    score_expr = '''(
+        %s * CBRT( COALESCE(lc.nb_likes,0) + COALESCE(v.youtube_likes, 0) - COALESCE(lc.nb_dislikes,0) )
+        + %s * ( CBRT( COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0) ) )
+        {use_tag_settings}
+    )'''
+
     if username :
         cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
             FROM users
@@ -62,7 +131,25 @@ def get_videos(username, limit, offset):
                     GROUP BY videourl
             ) tc ON tc.videourl = v.videourl'''
         use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
-    request = f'''SELECT v.videourl,
+
+        get_seen_settings = '''LEFT JOIN (
+            SELECT DISTINCT hbvb.videourl
+            FROM has_been_viewed_by hbvb
+            JOIN users su ON su.user_pk = hbvb.user_pk
+            WHERE su.username = %s
+        ) sv ON sv.videourl = v.videourl'''
+        seen_col = "COALESCE(sv.videourl, '') <> '' AS already_seen"
+
+        score_for_row_number = score_expr.format(use_tag_settings=use_tag_settings)
+
+    else:
+        get_seen_settings = ''
+        seen_col = 'False AS already_seen'
+
+        score_for_row_number = score_expr.format(use_tag_settings='')
+
+    request = f'''WITH ranked AS (
+        SELECT v.videourl,
                COALESCE(u.username, 'UnknownFromYoutube') AS username,
                COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)    AS nb_likes,
                COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0)    AS nb_views,
@@ -70,7 +157,9 @@ def get_videos(username, limit, offset):
                COALESCE(lc.nb_dislikes, 0)  AS nb_dislikes,
                v.is_hidden, 
                v.is_youtube_video,
-               v.first_upload
+               v.first_upload,
+               {score_for_row_number} AS score,
+               {seen_col}
         FROM videos v
         LEFT JOIN users u ON v.user_pk = u.user_pk 
         LEFT JOIN (
@@ -86,25 +175,53 @@ def get_videos(username, limit, offset):
             GROUP BY videourl
         ) vc ON vc.videourl = v.videourl
         {get_tag_settings}
+        {get_seen_settings}
         WHERE v.is_hidden = False
-        ORDER BY (
-            %s * CBRT( COALESCE(lc.nb_likes,0) + COALESCE(v.youtube_likes, 0) - COALESCE(lc.nb_dislikes,0) ) + %s * ( CBRT( COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0) )  ) {use_tag_settings}
-        ) DESC,
-        v.videourl ASC
-        LIMIT %s OFFSET %s
-        ;'''
+    )
+    SELECT videourl, username, nb_likes, nb_views, channel_url,
+           nb_dislikes, is_hidden, is_youtube_video, first_upload,
+           already_seen
+    FROM ranked
+    WHERE videourl != ALL(%s::text[])
+    -- Tirage pondéré par le score (Gumbel) : les bonnes vidéos sortent
+    -- plus souvent, mais chaque page est différente.
+    ORDER BY -ln(-ln(random())) * GREATEST(score, 0.001) DESC,
+             videourl ASC
+    LIMIT %s
+    ;'''
+
     if username:
-        cur.execute(request, [username, like_scale, view_scale, limit, offset])
+        cur.execute(request, [like_scale, view_scale,
+                              username,
+                              username,
+                              seen_video,
+                              limit])
     else:
-        cur.execute(request, [like_scale, view_scale, limit, offset])
+        cur.execute(request, [like_scale, view_scale,
+                              seen_video,
+                              limit])
     result = cur.fetchall()
     close_connection(cur, conn)
 
     return convert_sql_output_to_list_for_card(result)
 
-def get_all_videos_from_channel(channel_usename, limit, offset):
+def get_all_videos_from_channel(channel_usename, limit, offset, session_username=False):
+
+    if session_username :
+        get_seen_settings = '''LEFT JOIN (
+            SELECT DISTINCT hbvb.videourl
+            FROM has_been_viewed_by hbvb
+            JOIN users su ON su.user_pk = hbvb.user_pk
+            WHERE su.username = %s
+        ) sv ON sv.videourl = v.videourl'''
+        seen_col = "COALESCE(sv.videourl, '') <> '' AS already_seen"
+
+    else:
+        get_seen_settings = ''
+        seen_col = 'False AS already_seen'
+
     cur, conn = connection()
-    cur.execute("""
+    request = f'''
         SELECT v.videourl,
                u.username,
                COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)   AS nb_likes,
@@ -113,7 +230,8 @@ def get_all_videos_from_channel(channel_usename, limit, offset):
                COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
                v.is_hidden, 
                v.is_youtube_video,
-               v.first_upload
+               v.first_upload,
+               {seen_col}
         FROM videos v
         JOIN users u ON v.user_pk = u.user_pk
         LEFT JOIN (
@@ -128,9 +246,15 @@ def get_all_videos_from_channel(channel_usename, limit, offset):
             FROM has_been_viewed_by
             GROUP BY videourl
         ) vc ON vc.videourl = v.videourl
+        {get_seen_settings}
         WHERE u.username = %s
         LIMIT %s OFFSET %s
-        ;""", [channel_usename, limit, offset])
+        ;'''
+    if session_username :
+        cur.execute(request, [session_username, channel_usename, limit, offset])
+    else:
+        cur.execute(request, [channel_usename, limit, offset])
+
     result = cur.fetchall()
     close_connection(cur, conn)
 
@@ -563,7 +687,8 @@ def get_followed_videos(follower_username, limit, offset):
                     COALESCE(lc.nb_dislikes, 0) AS nb_dislikes,
                     v.is_hidden, 
                     v.is_youtube_video,
-                    v.first_upload
+                    v.first_upload,
+                    COALESCE(sv.videourl, '') <> '' AS already_seen
                 FROM videos v
                 JOIN users u ON v.user_pk = u.user_pk
                 LEFT JOIN (
@@ -578,10 +703,16 @@ def get_followed_videos(follower_username, limit, offset):
                     FROM has_been_viewed_by
                     GROUP BY videourl
                 ) vc ON vc.videourl = v.videourl
+                LEFT JOIN (
+                    SELECT DISTINCT hbvb.videourl
+                    FROM has_been_viewed_by hbvb
+                    JOIN users su ON su.user_pk = hbvb.user_pk
+                    WHERE su.username = %s
+                ) sv ON sv.videourl = v.videourl
                 JOIN is_following if ON v.user_pk = if.followed_pk
                 WHERE if.follower_pk = %s
                 LIMIT %s OFFSET %s
-                ;""", [follower_user_pk, limit, offset])
+                ;""", [follower_username, follower_user_pk, limit, offset])
     result = cur.fetchall()
     close_connection(cur, conn)
 
