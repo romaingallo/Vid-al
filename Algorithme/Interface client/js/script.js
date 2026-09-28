@@ -107,8 +107,11 @@ async function createCard(i, data = null) {
             thumb = `https://i.ytimg.com/vi/${data?.url}/hqdefault.jpg`;
             const data_from_youtube = await loadDataFromYoutube(data?.url);
             title = data_from_youtube?.title ?? `Erreur de titre`;
-            channel = data_from_youtube?.author_name ?? `Erreur de nom`;
-            channelurl = data_from_youtube?.author_url ?? ``;
+            if (channel == 'UnknownFromYoutube')
+            {
+                channel = data_from_youtube?.author_name ?? `Erreur de nom`;
+                channelurl = data_from_youtube?.author_url ?? ``;
+            }
         }
     else
     {

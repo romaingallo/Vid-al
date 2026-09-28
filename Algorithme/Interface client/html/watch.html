@@ -52,13 +52,12 @@
                             <button id="btn-dislike" class="btn {{red_state}}" aria-pressed="false">
                                 Dislike <span id="dislike-count">{{nb_dislikes}}</span>
                             </button>
-                            {% if not is_youtube_video %}
-                                {% if is_following %}
-                                <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Unfollow</button>
-                                {% else %}
-                                <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Follow</button>
-                                {% endif %}
+                            {% if is_following %}
+                            <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Unfollow</button>
                             {% else %}
+                            <button class="githubbutton" onclick="toggle_is_following('{{name}}', this)">Follow</button>
+                            {% endif %}
+                            {% if is_youtube_video %}
                                 + {{ youtube_likes }} likes from Youtube
                             {% endif %}
                         </div>

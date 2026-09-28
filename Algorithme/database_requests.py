@@ -248,6 +248,7 @@ def get_all_videos_from_channel(channel_usename, limit, offset, session_username
         ) vc ON vc.videourl = v.videourl
         {get_seen_settings}
         WHERE u.username = %s
+        ORDER BY v.first_upload DESC
         LIMIT %s OFFSET %s
         ;'''
     if session_username :
@@ -431,20 +432,32 @@ def add_video(video_id, username, first_upload_date = None):
                         ;""", [video_id, user_pk, first_upload_date])
     close_connection(cur, conn)
 
-def insert_new_youtube_video(video_id, first_upload_date = None):
+def insert_new_youtube_video(video_id, author_name, author_url, first_upload_date = None):
     """
     first_upload_date prend un string format YYYY-MM-DD "2026-09-08"
     """
     try:
         cur, conn = connection()
+        cur.execute("""SELECT username, user_pk
+                    FROM users
+                    WHERE username = %s
+                    ;""",[author_name])
+        user = cur.fetchall()
+        if len(user) == 0:
+            cur.execute("""INSERT INTO users 
+                            (username, register_date, channel_url, is_youtube_user) 
+                            VALUES (%s, current_date, %s, true)
+                            ;""",
+                            [author_name, author_url])
+        user_pk = get_user_pk_from_username(author_name)
         if not first_upload_date:
-            cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video)
-                        VALUES (%s,true)
-                        ;""", [video_id])
+            cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video, user_pk)
+                        VALUES (%s,true, %s)
+                        ;""", [video_id, user_pk])
         else:
-            cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video, first_upload)
-                                    VALUES (%s,true, %s)
-                                    ;""", [video_id, first_upload_date])
+            cur.execute("""INSERT INTO public.videos (videourl,is_youtube_video, first_upload, user_pk)
+                                    VALUES (%s,true, %s, %s)
+                                    ;""", [video_id, first_upload_date, user_pk])
         close_connection(cur, conn)
         return True
     except:
@@ -459,6 +472,7 @@ def get_author_info_from_video(video_id):
         ;""", [video_id])
     result = cur.fetchall()
     close_connection(cur, conn)
+    if len(result) == 0: return None, None, None
     return result[0]
 
 def get_host_url_from_username(username):
@@ -469,7 +483,19 @@ def get_host_url_from_username(username):
         ;""", [username])
     result = cur.fetchall()
     close_connection(cur, conn)
-    return result[0]
+    if len(result) == 0: return None
+    return result[0][0]
+
+def get_is_youtube_user(username):
+    cur, conn = connection()
+    cur.execute("""SELECT is_youtube_user
+            FROM users
+            WHERE username = %s
+        ;""", [username])
+    result = cur.fetchall()
+    close_connection(cur, conn)
+    if len(result) == 0: return None
+    return result[0][0]
 
 def get_has_used_viewed(username, video_id): # Return True if the user has watched the video
     cur, conn = connection()
@@ -511,9 +537,7 @@ def get_video_data(video_id):
     if len(result) == 0 : return False
     result = result[0]
 
-    author_username, host_url = "", "youtube_url"
-    if not result[3]: # If is not video youtube
-        author_username, host_url, _ = get_author_info_from_video(video_id)
+    author_username, host_url, _ = get_author_info_from_video(video_id)
 
     first_upload_date = None
     if result[2]:
@@ -711,6 +735,7 @@ def get_followed_videos(follower_username, limit, offset):
                 ) sv ON sv.videourl = v.videourl
                 JOIN is_following if ON v.user_pk = if.followed_pk
                 WHERE if.follower_pk = %s
+                ORDER BY v.first_upload DESC
                 LIMIT %s OFFSET %s
                 ;""", [follower_username, follower_user_pk, limit, offset])
     result = cur.fetchall()
@@ -881,16 +906,16 @@ def update_youtube_video_stats_with_api(video_id, force_api_key=None):
     if not get_is_youtube_video(video_id):
         raise ValueError(f"This video_id is not registered as a youtube video. video_id={video_id}")
 
-    view_count, like_count = get_one_video_stats(video_id, force_api_key)
+    view_count, like_count, published_at, _, _ = get_one_video_stats(video_id, force_api_key)
 
     if not view_count.isnumeric() or not like_count.isnumeric():
         raise ValueError(f"Error while accessing youtube stats. video_id={video_id}")
 
     cur, conn = connection()
     cur.execute("""UPDATE videos v
-        SET youtube_views=%s , youtube_likes=%s, latest_stat_update=CURRENT_DATE
+        SET youtube_views=%s , youtube_likes=%s, latest_stat_update=CURRENT_DATE, first_upload=%s
         WHERE v.videourl=%s
-        ;""", [view_count, like_count, video_id])
+        ;""", [view_count, like_count, published_at, video_id])
     close_connection(cur, conn)
 
 def get_all_youtube_videos():
@@ -977,7 +1002,7 @@ def get_and_insert_all_video_from_youtube_channel(channel_id, force_api_key=None
             formatted_date = date_obj.strftime("%Y-%m-%d")
         except:
             formatted_date = None
-        insert_succesfull = insert_new_youtube_video(video_data["video_id"], formatted_date)
+        insert_succesfull = insert_new_youtube_video(video_data["video_id"], author_name, author_url, formatted_date)
         if insert_succesfull :
             number_of_successfully_inserted_videos += 1
             if not youtuber_pfp_in_db(author_name, config.pfp_upload_folder):
@@ -1058,9 +1083,52 @@ def can_user_add_youtube_video(username):
     if result is None : return False
     return result[0]
 
+# in case youtube video dont have a channel
+def attach_youtube_video_to_author(video_id, force_api_key=None):
+    _, _, _, channel_name, channel_url = get_one_video_stats(video_id, force_api_key=force_api_key)
+    try:
+        cur, conn = connection()
+        cur.execute("""SELECT username, user_pk
+                    FROM users
+                    WHERE username = %s
+                    ;""",[channel_name])
+        user = cur.fetchall()
+        if len(user) == 0:
+            cur.execute("""INSERT INTO users 
+                            (username, register_date, channel_url, is_youtube_user) 
+                            VALUES (%s, current_date, %s, true)
+                            ;""",
+                            [channel_name, channel_url])
+        user_pk = get_user_pk_from_username(channel_name)
+        cur.execute("""UPDATE videos v
+            SET user_pk = %s
+            WHERE v.videourl=%s
+            ;""", [user_pk, video_id])
+        close_connection(cur, conn)
+        return True
+    except Exception as e:
+        print("Erreur", f": {e}")
+        return False
+
+def attach_all_youtube_video_to_author(force_api_key):
+    cur, conn = connection()
+    cur.execute("""SELECT videourl
+                FROM videos v
+                WHERE user_pk is NULL
+                ;""")
+    unauthored_videos = cur.fetchall()
+    unauthored_videos = [video_ids[0] for video_ids in unauthored_videos]
+    close_connection(cur, conn)
+    for vid in unauthored_videos:
+        attach_youtube_video_to_author(vid, force_api_key)
+    return
+
+
 if __name__ == "__main__" :
     print("Enter the database password : ")
     config.database_password = input()
+    print("Enter youtube API key :")
+    force_api_key = input()
     
     # print(get_comments_of_video("Bird"))
     # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
@@ -1078,8 +1146,6 @@ if __name__ == "__main__" :
     # print(add_tag_for_user_followed('pyhon', 'One'))
     # [print(vid) for vid in get_videos(False, 15, 0)]
 
-    # print("Enter youtube API key :")
-    # force_api_key = input()
     # # # update_youtube_video_stats_with_api("inujm9v5IT8", force_api_key)
     # # # print(get_all_youtube_videos())
     # # update_all_youtube_video_stats_with_api(force_api_key)
@@ -1094,4 +1160,11 @@ if __name__ == "__main__" :
     # print(check_delay_between_video_update("hnzMih9HWEE"))
     # fetch_and_add_video_tags("s28Y8ASchEk")
     # [fetch_and_add_video_tags(id) for id in get_all_youtube_videos()]
+
+    # print(get_is_youtube_user("Grian"))
+    # print(get_is_youtube_user("Griana"))
+    # print(get_is_youtube_user("One"))
+
+    # print(attach_youtube_video_to_author("66BBKlEVpkU", force_api_key))
+    print(attach_all_youtube_video_to_author(force_api_key))
     

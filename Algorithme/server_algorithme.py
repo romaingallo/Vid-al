@@ -404,14 +404,15 @@ def pfp_of(username):
     
 @app.route('/visit_channel/<channel_name>')
 def visit_channel(channel_name):
-    host_url = get_host_url_from_username(channel_name)
+    hostURL = get_host_url_from_username(channel_name)
+    is_youtube_user = get_is_youtube_user(channel_name)
     if "user" in session : 
         authorized_user_to_update_channel = config.ALLOW_UPDATE_CHANNEL
         if config.ALLOW_AUTHORIZED_USERS_UPDATE_CHANNEL: authorized_user_to_update_channel = can_user_update_channel(session["user"])
         return render_template("html/visit_channel.html", 
                                    name=channel_name, 
                                    own_profile= session["user"] == channel_name, 
-                                   hostURL=host_url,
+                                   hostURL = hostURL, is_youtube_user=is_youtube_user,
                                    connected = "user" in session,
                                    is_following = get_if_follow_channel(session["user"], channel_name),
                                     ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
@@ -419,7 +420,7 @@ def visit_channel(channel_name):
     return render_template("html/visit_channel.html", 
                            name=channel_name, 
                            own_profile=False, 
-                           hostURL=host_url,
+                           hostURL = hostURL, is_youtube_user=is_youtube_user,
                            connected = "user" in session,
                            ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
                            ALLOW_UPDATE_CHANNEL = config.ALLOW_UPDATE_CHANNEL)
@@ -436,7 +437,7 @@ def followedvideos(offset):
 def togglefollowing():
     if request.method == 'POST':
         if "user" in session : 
-            channel_followed_username = sanitize_username(request.form.get('channel_followed_username'))
+            channel_followed_username = request.form.get('channel_followed_username')
             if not channel_followed_username :
                 return jsonify({"error": "channel_followed_username is missing."}), 400
             if toggle_following_channel(session["user"], channel_followed_username):
@@ -734,7 +735,7 @@ def add_youtube_video():
             flash("Données YouTube incomplètes.")
             return render_template("html/add_youtube_video.html")
         
-        insert_succesfull = insert_new_youtube_video(video_id)
+        insert_succesfull = insert_new_youtube_video(video_id, author_name, author_url)
         # print(video_info_resp.json())
         if insert_succesfull :
             update_youtube_video_stats_with_api(video_id)

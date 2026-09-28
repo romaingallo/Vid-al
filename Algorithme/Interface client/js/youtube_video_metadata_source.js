@@ -23,16 +23,16 @@ async function showMetadata() {
 
         const data_from_youtube = await loadDataFromYoutube(videoId);
         const title = data_from_youtube?.title ?? `Erreur de titre`;
-        const channel = data_from_youtube?.author_name ?? `Erreur de nom`;
-        const channelurl = data_from_youtube?.author_url ?? ``;
+        // const channel = data_from_youtube?.author_name ?? `Erreur de nom`;
+        // const channelurl = data_from_youtube?.author_url ?? ``;
 
         titleElement.innerText = title;
-        channel_linkElement.href = channelurl;
-        pfpElement.src = `/pfp_of/${channel}`;
-        pfpElement.alt = `${channel} pfp`;
-        subElement.src = channelurl;
-        subElement.innerText = `${channel} ` + subElement.innerText;
-        subElement.href = channelurl;
+        // channel_linkElement.href = channelurl;
+        // pfpElement.src = `/pfp_of/${channel}`;
+        // pfpElement.alt = `${channel} pfp`;
+        // subElement.src = channelurl;
+        // subElement.innerText = `${channel} ` + subElement.innerText;
+        // subElement.href = channelurl;
 
     } else {
         console.warn('Aucun paramètre video dans l\'URL');
