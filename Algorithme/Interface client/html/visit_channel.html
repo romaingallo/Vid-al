@@ -44,6 +44,11 @@
                 const own_profile = true;
             </script>
     {% endif %}
+    {% if authorized_to_update_all_videos %}
+        <script type="text/javascript">
+                const authorized_to_update_all_videos = true;
+            </script>
+    {% endif %}
     <script src="/js/script.js"></script>
     <script src="/js/following.js"></script>
 {% endblock %}

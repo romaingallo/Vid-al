@@ -107,7 +107,7 @@ def get_rss_feed(channel_id):
         videos_data.append(data)
     return videos_data
 
-def get_video_tags(video_id):
+def fetch_video_tags(video_id):
     video_url = f"https://www.youtube.com/watch?v={video_id}"
     req = urllib.request.Request(video_url, headers={
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -152,4 +152,4 @@ if __name__ == "__main__" :
     # [print(viddata) for viddata in get_rss_feed("UCROW1J2NQhg1Cd8y_XZ8e1g")]
     # print(get_one_video_stats("RQWpF2Gb-gU", force_api_key))
     # print(fetch_channel_id_from_video_id("RQWpF2Gb-gU", force_api_key))
-    print(get_video_tags("UiPcEW_d9Io"))
+    print(fetch_video_tags("UiPcEW_d9Io"))

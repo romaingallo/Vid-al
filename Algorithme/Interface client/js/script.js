@@ -125,6 +125,20 @@ async function createCard(i, data = null) {
     let is_hidden_class = ``;
     if (is_hidden){is_hidden_class = " is_hidden"}
 
+    let can_update_video = false;
+    let update_video_link = ``;
+    if (typeof own_profile !== 'undefined') {
+        if (own_profile) {
+            can_update_video = true;
+        }
+    }
+    if (typeof authorized_to_update_all_videos !== 'undefined') {
+        if (authorized_to_update_all_videos) {
+            can_update_video = true;
+        }
+    }
+    if (can_update_video)  {update_video_link=`<a class="editlink" href="${editvideourl}"><img class="editicon" src="/images/edit.svg" alt="Edit"></a>`;}
+
     const card = document.createElement('article');
         card.className = 'video-card';
         card.innerHTML = `
@@ -132,27 +146,13 @@ async function createCard(i, data = null) {
             <div class="meta">
                 <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
                 <div class="info">
-                    <div><a class="title" title="${title}"  href="${url}">${title}</a></div>
+                    <div><a class="title" title="${title}" href="${url}">${title}</a></div>
                     <div><a class="sub" href="${channelurl}">${channel} • ${views} views • ${likes} likes${first_upload_date_text}</a></div>
                 </div>
                 ${is_youtube_video_icone}
+                ${update_video_link}
             </div>
         `;
-        if (typeof own_profile !== 'undefined') {
-            if (own_profile) {
-                card.innerHTML = `
-                    <a class="thumbnaillink" href="${url}"><img class="thumbnail${is_hidden_class}" src="${thumb}" alt="Miniature ${i}">${has_already_been_seen_icon}</a>
-                    <div class="meta">
-                        <a class="avatar" aria-hidden="true" href="${channelurl}"><img class="pfp" src="/pfp_of/${channel}" alt="${channel} pfp"></a>
-                        <div class="info">
-                            <div><a class="title" title="${title}" href="${url}">${title}</a></div>
-                            <div><a class="sub" href="${channelurl}">${channel} • ${views} views • ${likes} likes${first_upload_date_text}</a></div>
-                        </div>
-                        <a class="editlink" href="${editvideourl}"><img class="editicon" src="/images/edit.svg" alt="Edit"></a>
-                    </div>
-                `;
-            }
-        }
     return card;
 }
 

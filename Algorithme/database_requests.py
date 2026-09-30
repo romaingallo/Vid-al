@@ -4,7 +4,7 @@ import hashlib
 from time import sleep
 from utils import *
 import config
-from youtube_api import get_one_video_stats, fetch_videos_stats, get_rss_feed, fetch_channel_id_from_video_id, get_video_tags
+from youtube_api import get_one_video_stats, fetch_videos_stats, get_rss_feed, fetch_channel_id_from_video_id, fetch_video_tags
 import requests as req
 from datetime import datetime
 
@@ -918,6 +918,12 @@ def update_youtube_video_stats_with_api(video_id, force_api_key=None):
         ;""", [view_count, like_count, published_at, video_id])
     close_connection(cur, conn)
 
+    # If there is no tags, we shearch if it has some to add them
+    tags_already_on_video = get_tags_of_video(video_id)
+    nb_of_tags = len(tags_already_on_video)
+    if nb_of_tags == 0:
+        fetch_and_add_video_tags(video_id)
+
 def get_all_youtube_videos():
     cur, conn = connection()
     cur.execute("""SELECT v.videourl 
@@ -1054,7 +1060,8 @@ def fetch_and_add_video_tags(video_id):
         print(f"This video already has {nb_of_tags} > config.MAX_TAG_NUMBER_ON_VIDEO = {config.MAX_TAG_NUMBER_ON_VIDEO}. video_id={video_id}")
         return
     
-    tag_list = get_video_tags(video_id)[:max(config.MAX_TAG_NUMBER_ON_VIDEO-nb_of_tags,0)]
+    tag_list = fetch_video_tags(video_id)[:max(config.MAX_TAG_NUMBER_ON_VIDEO-nb_of_tags,0)]
+    # print("fetch_and_add_video_tags :", tag_list)
     # if len(tag_list) == 0: print("tag_list=[]")
     for tag in tag_list:
         if tag in tags_already_on_video: continue
@@ -1064,6 +1071,17 @@ def fetch_and_add_video_tags(video_id):
 def can_user_update_channel(username):
     cur, conn = connection()
     cur.execute("""SELECT can_update_channel
+                FROM users
+                WHERE username = %s
+                ;""", [username])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    if result is None : return result
+    return result[0]
+
+def can_user_update_all_videos_from_all_channels(username):
+    cur, conn = connection()
+    cur.execute("""SELECT can_update_all_videos_from_all_channels
                 FROM users
                 WHERE username = %s
                 ;""", [username])
@@ -1127,8 +1145,8 @@ def attach_all_youtube_video_to_author(force_api_key):
 if __name__ == "__main__" :
     print("Enter the database password : ")
     config.database_password = input()
-    print("Enter youtube API key :")
-    force_api_key = input()
+    # print("Enter youtube API key :")
+    # force_api_key = input()
     
     # print(get_comments_of_video("Bird"))
     # print(add_comment_on_video("Bird", "Leonardo", "It must fly so fast !"))
@@ -1153,6 +1171,7 @@ if __name__ == "__main__" :
 
     # print(can_user_update_channel("One"))
     # print(can_user_add_youtube_video("One"))
+    print(can_user_update_all_videos_from_all_channels("One"))
 
     # print(get_video_data("Bird"))
     # print(get_video_data("hnzMih9HWEE"))
@@ -1166,5 +1185,5 @@ if __name__ == "__main__" :
     # print(get_is_youtube_user("One"))
 
     # print(attach_youtube_video_to_author("66BBKlEVpkU", force_api_key))
-    print(attach_all_youtube_video_to_author(force_api_key))
+    # print(attach_all_youtube_video_to_author(force_api_key))
     

@@ -404,22 +404,29 @@ def pfp_of(username):
     
 @app.route('/visit_channel/<channel_name>')
 def visit_channel(channel_name):
+    if len(channel_name) > 32:
+        flash("An error occured with the channel username")
+        return redirect(url_for('home'))
     hostURL = get_host_url_from_username(channel_name)
     is_youtube_user = get_is_youtube_user(channel_name)
+    authorized_to_update_all_videos = False
     if "user" in session : 
         authorized_user_to_update_channel = config.ALLOW_UPDATE_CHANNEL
         if config.ALLOW_AUTHORIZED_USERS_UPDATE_CHANNEL: authorized_user_to_update_channel = can_user_update_channel(session["user"])
+        if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
         return render_template("html/visit_channel.html", 
                                    name=channel_name, 
                                    own_profile= session["user"] == channel_name, 
+                                   authorized_to_update_all_videos = authorized_to_update_all_videos,
                                    hostURL = hostURL, is_youtube_user=is_youtube_user,
                                    connected = "user" in session,
                                    is_following = get_if_follow_channel(session["user"], channel_name),
-                                    ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
+                                   ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
                                     ALLOW_UPDATE_CHANNEL = authorized_user_to_update_channel)
     return render_template("html/visit_channel.html", 
                            name=channel_name, 
                            own_profile=False, 
+                           authorized_to_update_all_videos = False,
                            hostURL = hostURL, is_youtube_user=is_youtube_user,
                            connected = "user" in session,
                            ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
@@ -462,7 +469,10 @@ def userfollowedlist():
 def edit(channel_name, video_id):
     if not "user" in session:
         return redirect(url_for('home'))
-    if not session["user"] == channel_name:
+    authorized_to_update_all_videos = False
+    if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
+    authorized_to_update_all_videos = session["user"] == channel_name or authorized_to_update_all_videos
+    if not authorized_to_update_all_videos:
         return redirect(url_for('home'))
     
     parameters = get_param_of_video(video_id)
@@ -479,7 +489,9 @@ def toggle_is_hidden():
         if "user" in session: 
             video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
-            if is_video_from(video_id, session["user"]):
+            authorized_to_update_all_videos = False
+            if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
+            if is_video_from(video_id, session["user"]) or authorized_to_update_all_videos:
                 if toggle_is_hidden_of(video_id):
                     return '', 200
                 else : return jsonify({"error": 'Toggle failed'}), 500
@@ -494,7 +506,9 @@ def remove_tag():
         if "user" in session: 
             video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
-            if is_video_from(video_id, session["user"]):
+            authorized_to_update_all_videos = False
+            if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
+            if is_video_from(video_id, session["user"]) or authorized_to_update_all_videos:
                 tag_name = sanitize_tag_name(request.form.get('tag_name'))
                 if not tag_name : return '', 400
                 if remove_tag_from_video(tag_name, video_id):
@@ -511,7 +525,9 @@ def add_tag():
         if "user" in session: 
             video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
-            if is_video_from(video_id, session["user"]):
+            authorized_to_update_all_videos = False
+            if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
+            if is_video_from(video_id, session["user"]) or authorized_to_update_all_videos:
                 list_tags_on_video = get_tags_of_video(video_id)
                 if len(list_tags_on_video)+1 > config.MAX_TAG_NUMBER_ON_VIDEO: return jsonify({"error": f'The video has already been tagged {config.MAX_TAG_NUMBER_ON_VIDEO} times (max per video).'}), 500
                 tag_name = sanitize_tag_name(request.form.get('tag_name'))
