@@ -26,6 +26,8 @@ const titleElement = document.getElementById('title');
 const descriptionElement = document.getElementById('description');
 if (!titleElement) throw new Error('Element #titleElement introuvable');
 if (!descriptionElement) throw new Error('Element #descriptionElement introuvable');
+const pageTitleElement = document.getElementById('pagetitle');
+if (!pageTitleElement) throw new Error('Element #pageTitleElement introuvable');
 
 async function loadMetadataFromServer() {
     try {
@@ -33,6 +35,7 @@ async function loadMetadataFromServer() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json(); // attendre un tableau d'objets vidéo
         titleElement.textContent = data.title;
+        pageTitleElement.textContent = data.title;
         descriptionElement.textContent = data.descritpion;
         return data;
     } catch (err) {

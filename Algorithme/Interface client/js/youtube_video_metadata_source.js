@@ -6,6 +6,8 @@ const pfpElement = document.getElementById('pfp');
 if (!pfpElement) throw new Error('Element #pfpElement introuvable');
 const subElement = document.getElementById('sub');
 if (!subElement) throw new Error('Element #subElement introuvable');
+const pageTitleElement = document.getElementById('pagetitle');
+if (!pageTitleElement) throw new Error('Element #pageTitleElement introuvable');
 
 async function loadDataFromYoutube(video_id) {
     try {
@@ -27,6 +29,7 @@ async function showMetadata() {
         // const channelurl = data_from_youtube?.author_url ?? ``;
 
         titleElement.innerText = title;
+        pageTitleElement.textContent = title;
         // channel_linkElement.href = channelurl;
         // pfpElement.src = `/pfp_of/${channel}`;
         // pfpElement.alt = `${channel} pfp`;
