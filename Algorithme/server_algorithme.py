@@ -774,40 +774,66 @@ def add_youtube_video():
 def settings():
     if "user" in session : 
         if request.method == 'POST':
-            new_like_scale = request.form.get('new_like_scale')
-            if new_like_scale is not None:
-                try:
-                    new_like_scale = float(new_like_scale)
-                except (TypeError, ValueError):
-                    return jsonify({"error": 'Invalid value.'}), 400
-                if update_user_setting("setting_like_scale", new_like_scale, session["user"]):
+
+            if is_rate_limited(request.remote_addr):
+                flash("To many requests, try later.")
+                return render_template("html/add_youtube_video.html")
+            
+            # Change active setting
+            set_as_active_request = request.form.get('set_as_active_request')
+            if set_as_active_request is not None:
+                set_as_active_request = sanitize_generic_text(set_as_active_request)
+                if set_as_active_request is None : return jsonify({"error": 'Invalid value.'}), 400
+                if set_as_active_setting(session["user"], set_as_active_request): return '', 200
+                else: return jsonify({"error": 'Update failed.'}), 500
+
+            # Add preset settings
+            add_preset_request = request.form.get('add_preset_request')
+            if add_preset_request is not None:
+                if add_user_preset_settings(session["user"]) :
+                    settings_dict = get_user_preset_settings(session["user"])
+                    return settings_dict, 200
+                else: return jsonify({"error": 'Adding procedure failed.'}), 500
+
+            # Delete preset settings
+            del_preset_request = request.form.get('del_preset_request')
+            if del_preset_request is not None:
+                del_preset_request = sanitize_generic_text(del_preset_request)
+                if del_preset_request is None : return jsonify({"error": 'Invalid value.'}), 400
+                if delete_user_preset_settings(session["user"], del_preset_request): 
+                    settings_dict = get_user_preset_settings(session["user"])
+                    return settings_dict, 200
+                else: return jsonify({"error": 'Update failed.'}), 500
+
+            # Change a setting
+            setting_preset  = request.form.get('setting_preset')
+            setting_name    = request.form.get('setting_name')
+            value           = request.form.get('value')
+            if setting_preset is not None and setting_name is not None and value is not None:
+                setting_preset = sanitize_generic_text(setting_preset)
+                setting_name = sanitize_generic_text(setting_name)
+                if setting_preset is None or setting_name is None : return jsonify({"error": 'Invalid value.'}), 400
+                if setting_name != 'preset_name':
+                    try: value = float(value)
+                    except (TypeError, ValueError): return jsonify({"error": 'Invalid value.'}), 400
+                else:
+                    value = sanitize_generic_text(value)
+                    if value is None : return jsonify({"error": 'Invalid value.'}), 400
+
+                if update_user_setting(setting_name, setting_preset, value, session["user"]):
                     return '', 200
                 return jsonify({"error": 'Update failed.'}), 500
-            new_view_scale = request.form.get('new_view_scale')
-            if new_view_scale is not None:
-                try:
-                    new_view_scale = float(new_view_scale)
-                except (TypeError, ValueError):
-                    return jsonify({"error": 'Invalid value.'}), 400
-                if update_user_setting("setting_view_scale", new_view_scale, session["user"]):
-                    return '', 200
-                return jsonify({"error": 'Update failed.'}), 500
-            new_tag_scale = request.form.get('new_tag_scale')
-            if new_tag_scale is not None:
-                try:
-                    new_tag_scale = float(new_tag_scale)
-                except (TypeError, ValueError):
-                    return jsonify({"error": 'Invalid value.'}), 400
-                if update_user_setting("setting_tags_scale", new_tag_scale, session["user"]):
-                    return '', 200
-                return jsonify({"error": 'Update failed.'}), 500
-            return '', 400
-        
-        list_settings = get_user_setting(session["user"])
+
+            # No good request
+            return jsonify({"error": 'Invalid request.'}), 400
+
+        # Returning the page
+        settings_dict = get_user_preset_settings(session["user"])
         list_tags     = get_user_followed_tags(session["user"])
         return render_template("html/settings.html",
-                               list_settings = list_settings,
+                               settings_dict = settings_dict,
                                list_tags = list_tags)
+    
     return jsonify({"error": 'Unauthenticated user'}), 401
 
 @app.route('/api/settings/remove_followed_tag', methods=['POST'])

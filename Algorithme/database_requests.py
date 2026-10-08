@@ -27,86 +27,15 @@ def close_connection(cur, conn):
     cur.close()
     conn.close()
 
-
-# def get_all_videos():
-#     cur, conn = connection()
-#     cur.execute("SELECT v.videourl, u.username, COUNT(DISTINCT l.videourl) as nb_likes, COUNT(DISTINCT views.videourl) as nb_views, u.channel_url as channel_url " \
-#     "FROM videos v " \
-#     "JOIN users u ON v.user_pk = u.user_pk " \
-#     "LEFT JOIN has_been_liked_by l ON v.videourl = l.videourl " \
-#     "LEFT JOIN has_been_viewed_by views ON v.videourl = views.videourl " \
-#     "GROUP BY v.videourl, u.username, channel_url;",[])
-#     result = cur.fetchall()
-#     close_connection(cur, conn)
-
-#     return convert_sql_output_to_list_for_card(result)
-
-# def get_videos(username, limit, offset):
-#     cur, conn = connection()
-#     like_scale, view_scale, get_tag_settings, use_tag_settings = 1, 0.1, '', ''
-#     if username :
-#         cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
-#             FROM users
-#             WHERE username = %s
-#             ;""", [username])
-#         like_scale, view_scale, tags_scale = cur.fetchone()
-#         get_tag_settings = '''LEFT JOIN(
-#                     SELECT videourl, COUNT(tcc.tags) AS nb_tags
-#                     FROM has_tag ht 
-#                     INNER JOIN (
-#                             SELECT f.tags
-#                             FROM follow_tags f
-#                             JOIN users u ON u.user_pk = f.user_pk
-#                             WHERE u.username = %s
-#                     ) tcc ON ht.tags = tcc.tags
-#                     GROUP BY videourl
-#             ) tc ON tc.videourl = v.videourl'''
-#         use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
-#     request = f'''SELECT v.videourl,
-#                COALESCE(u.username, 'UnknownFromYoutube') AS username,
-#                COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)    AS nb_likes,
-#                COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0)    AS nb_views,
-#                COALESCE(u.channel_url, '')  AS channel_url,
-#                COALESCE(lc.nb_dislikes, 0)  AS nb_dislikes,
-#                v.is_hidden, 
-#                v.is_youtube_video,
-#                v.first_upload
-#         FROM videos v
-#         LEFT JOIN users u ON v.user_pk = u.user_pk 
-#         LEFT JOIN (
-#             SELECT videourl,
-#                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
-#                    COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
-#             FROM has_been_liked_by
-#             GROUP BY videourl
-#         ) lc ON lc.videourl = v.videourl
-#         LEFT JOIN (
-#             SELECT videourl, COUNT(*) AS nb_views
-#             FROM has_been_viewed_by
-#             GROUP BY videourl
-#         ) vc ON vc.videourl = v.videourl
-#         {get_tag_settings}
-#         WHERE v.is_hidden = False
-#         ORDER BY (
-#             %s * CBRT( COALESCE(lc.nb_likes,0) + COALESCE(v.youtube_likes, 0) - COALESCE(lc.nb_dislikes,0) ) + %s * ( CBRT( COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0) )  ) {use_tag_settings}
-#         ) DESC,
-#         v.videourl ASC
-#         LIMIT %s OFFSET %s
-#         ;'''
-#     if username:
-#         cur.execute(request, [username, like_scale, view_scale, limit, offset])
-#     else:
-#         cur.execute(request, [like_scale, view_scale, limit, offset])
-#     result = cur.fetchall()
-#     close_connection(cur, conn)
-
-#     return convert_sql_output_to_list_for_card(result)
-
 def get_videos(username, limit, seen_video=[]):
 
     cur, conn = connection()
 
-    like_scale, view_scale, get_tag_settings, use_tag_settings = 1, 0.1, '', ''
+    cur.execute("""SELECT *
+                FROM settings s 
+                WHERE s.settings_pk =1;""")
+    _, like_scale, view_scale, tags_scale, like_min, like_max, view_min, view_max, tags_min, tags_max, has_already_been_seen_scale, has_already_been_seen_min, has_already_been_seen_max, is_following_scale, is_following_min, is_following_max, _ = cur.fetchone()
+    get_tag_settings, use_tag_settings = '', ''
     score_expr = '''(
         %s * CBRT( COALESCE(lc.nb_likes,0) + COALESCE(v.youtube_likes, 0) - COALESCE(lc.nb_dislikes,0) )
         + %s * ( CBRT( COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0) ) )
@@ -114,11 +43,16 @@ def get_videos(username, limit, seen_video=[]):
     )'''
 
     if username :
-        cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
-            FROM users
-            WHERE username = %s
-            ;""", [username])
-        like_scale, view_scale, tags_scale = cur.fetchone()
+        # cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
+        #     FROM users
+        #     WHERE username = %s
+        #     ;""", [username])
+        cur.execute("""SELECT s.*
+                    FROM settings s
+                    JOIN users u on u.active_settings_pk = s.settings_pk
+                    WHERE username = %s
+                    ;""", [username])
+        _, like_scale, view_scale, tags_scale, like_min, like_max, view_min, view_max, tags_min, tags_max, has_already_been_seen_scale, has_already_been_seen_min, has_already_been_seen_max, is_following_scale, is_following_min, is_following_max, _ = cur.fetchone()
         get_tag_settings = '''LEFT JOIN(
                     SELECT videourl, COUNT(tcc.tags) AS nb_tags
                     FROM has_tag ht 
@@ -803,30 +737,192 @@ def get_list_of_followed_channels(follower_username):
     close_connection(cur, conn)
     return [tuple[0] for tuple in result]
 
-def update_user_setting(setting_name, value, username):
+def update_user_setting(setting_name, preset_name, value, username):
     try:
         cur, conn = connection()
-        query = sql.SQL("""UPDATE users
+        if setting_name == 'preset_name':
+            cur.execute("""SELECT s.preset_name
+                        FROM has_settings_preset hsp 
+                        JOIN users u ON hsp.user_pk = u.user_pk 
+                        JOIN settings s ON hsp.settings_pk = s.settings_pk 
+                        WHERE u.username = 'One';""")
+            all_preset_names = cur.fetchall()
+            all_preset_names = [name[0] for name in all_preset_names]
+            if value in all_preset_names:
+                close_connection(cur, conn)
+                return False
+
+        cur.execute("""SELECT s.settings_pk
+                    FROM has_settings_preset hsp 
+                    JOIN users u ON hsp.user_pk = u.user_pk 
+                    JOIN settings s ON hsp.settings_pk = s.settings_pk 
+                    WHERE u.username = %s AND s.preset_name = %s;""",
+                    [username, preset_name])
+        setting_pk = cur.fetchone()
+        if setting_pk: setting_pk = setting_pk[0]
+        else: 
+            close_connection(cur, conn)
+            return False
+        query = sql.SQL("""UPDATE settings s
                 SET {col} = %s
-                WHERE username = %s
+                WHERE s.settings_pk = %s
                 ;""").format(
             col=sql.Identifier(setting_name)
         )
-        cur.execute(query, [value, username])
+        cur.execute(query, [value, setting_pk])
+        close_connection(cur, conn)
+        return True
+    except Exception:
+        print('update_user_setting failed')
+        return False
+
+def get_user_active_setting(username):
+    cur, conn = connection()
+    cur.execute("""SELECT s.*
+                FROM settings s
+                LEFT JOIN users u on u.active_settings_pk = s.settings_pk
+                WHERE username = %s
+                ;""", [username])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    settings_list = [setting for setting in result]
+    settings_list.pop(0)
+    settings_list.pop()
+    return settings_list
+
+def get_user_preset_settings(username):
+    cur, conn = connection()
+    cur.execute("""SELECT s.*
+                FROM has_settings_preset hsp 
+                JOIN users u ON hsp.user_pk = u.user_pk 
+                JOIN settings s ON hsp.settings_pk = s.settings_pk 
+                WHERE u.username = %s;""", [username])
+    all_presets = cur.fetchall()
+    cur.execute("""SELECT *
+                    FROM settings s 
+                    WHERE s.settings_pk =1;""")
+    all_presets.append(cur.fetchone()) # We add the default settings
+    all_presets = [list(preset) for preset in all_presets]
+    cur.execute("""SELECT active_settings_pk
+                    FROM users 
+                    WHERE username = %s
+                    ;""", [username])
+    active_preset_id = cur.fetchone()[0]
+    close_connection(cur, conn)
+
+    dico_res = {}
+    last_element_id = len(all_presets[0])-1
+    for preset in all_presets:
+        dico_res[preset[0]] = {"is_active": active_preset_id==preset[last_element_id], 
+                               "is_default":preset[16]==1,
+                               "like_scale":preset[1],
+                               "view_scale":preset[2],
+                               "tags_scale":preset[3],
+                               "like_min":preset[4],
+                               "like_max":preset[5],
+                               "view_min":preset[6],
+                               "view_max":preset[7],
+                               "tags_min":preset[8],
+                               "tags_max":preset[9],
+                               "has_already_been_seen_scale":preset[10],
+                               "has_already_been_seen_min":preset[11],
+                               "has_already_been_seen_max":preset[12],
+                               "is_following_scale":preset[13],
+                               "is_following_min":preset[14],
+                               "is_following_max":preset[15]}
+
+    return dico_res
+
+def add_user_preset_settings(username):
+    try:
+        cur, conn = connection()
+        cur.execute("""SELECT COUNT(*)
+                    FROM has_settings_preset hsp 
+                    JOIN users u ON hsp.user_pk = u.user_pk 
+                    WHERE u.username = %s;""", [username])
+        nb_of_presets = cur.fetchone()[0]
+        cur.execute("""INSERT INTO settings (preset_name)
+                    VALUES (%s)
+                    RETURNING settings_pk
+                """, [f'New preset ({nb_of_presets})'])
+        settings_pk = cur.fetchone()[0]
+        cur.execute("""INSERT INTO has_settings_preset (user_pk, settings_pk)
+                SELECT 
+                    (SELECT user_pk FROM users WHERE username = %s), 
+                    (%s)
+                ;""", [username, settings_pk])
         close_connection(cur, conn)
         return True
     except:
         return False
 
-def get_user_setting(username):
-    cur, conn = connection()
-    cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
-                FROM users
-                WHERE username = %s
-                ;""", [username])
-    result = cur.fetchone()
-    close_connection(cur, conn)
-    return [setting for setting in result]
+def delete_user_preset_settings(username, preset_name):
+    try :
+        cur, conn = connection() 
+
+        # Getting the pk of the futur deleted preset 
+        cur.execute("""SELECT s.settings_pk
+                    FROM has_settings_preset hsp 
+                    JOIN users u ON hsp.user_pk = u.user_pk 
+                    JOIN settings s ON hsp.settings_pk = s.settings_pk 
+                    WHERE u.username = %s AND s.preset_name = %s
+                ;""", [username, preset_name])
+        presets_pk = cur.fetchone()
+        if presets_pk: presets_pk = presets_pk[0]
+        else: 
+            close_connection(cur, conn)
+            return False
+        
+        # In case we try to delete the active preset, we set the default preset as active
+        cur.execute("""SELECT active_settings_pk
+                    FROM users
+                    WHERE username = %s
+                    ;""", [username])
+        active_settings_pk = cur.fetchone()[0]
+        if active_settings_pk == presets_pk:
+            cur.execute("""UPDATE users
+                        SET active_settings_pk = 1
+                        WHERE username = %s
+                        ;""", [username])
+            
+        # delete in has_settings_preset, then in settings
+        cur.execute("""DELETE FROM has_settings_preset hsp
+                    USING users u
+                    WHERE u.username = %s AND hsp.settings_pk = %s
+                    ;""", [username, presets_pk])
+        cur.execute("""DELETE FROM settings s
+                    WHERE s.settings_pk = %s
+                    ;""", [presets_pk])
+
+        close_connection(cur, conn)
+        return True
+    except Exception:
+        print('delete_user_preset_settings failed')
+        return False
+
+def set_as_active_setting(username, preset_name):
+    try:
+        cur, conn = connection()
+        cur.execute("""UPDATE users AS u
+                    SET active_settings_pk = s.settings_pk
+                    FROM settings AS s
+                    WHERE u.username = %s
+                    AND s.preset_name = %s
+                    AND (
+                        EXISTS (
+                            SELECT 1
+                            FROM has_settings_preset hsp
+                            WHERE hsp.user_pk = u.user_pk
+                                AND hsp.settings_pk = s.settings_pk
+                        )
+                        OR (s.preset_name = 'Default' AND s.settings_pk = 1)
+                    );""", [username, preset_name])
+        updated = cur.rowcount
+        close_connection(cur, conn)
+        return updated > 0
+    except Exception:
+        print('set_as_active_setting failed')
+        return False
 
 def get_user_followed_tags(username):
     cur, conn = connection()
@@ -1157,8 +1253,12 @@ if __name__ == "__main__" :
     # print(get_if_follow_channel('Walter White', 'Madeline'))
     # print(toggle_following_channel('Walter White', 'Madeline'))
     # print(get_list_of_followed_channels('One'))
-    # print(update_user_setting("setting_like_scale", 10, "One"))
-    # print(get_user_setting("One"))
+    # print(update_user_setting("like_scale", "one super settings", 0.5, "One"))
+    # print(add_user_preset_settings("One"))
+    print(delete_user_preset_settings("One", "pre"))
+    # print(get_user_active_setting("One"))
+    # print(get_user_preset_settings("One"))
+    # print(set_as_active_setting("One","one super settings"))
     # print(get_user_followed_tags("One"))
     # print(remove_followed_tag_from_user('VLOG', 'One'))
     # print(add_tag_for_user_followed('pyhon', 'One'))
@@ -1171,7 +1271,7 @@ if __name__ == "__main__" :
 
     # print(can_user_update_channel("One"))
     # print(can_user_add_youtube_video("One"))
-    print(can_user_update_all_videos_from_all_channels("One"))
+    # print(can_user_update_all_videos_from_all_channels("One"))
 
     # print(get_video_data("Bird"))
     # print(get_video_data("hnzMih9HWEE"))

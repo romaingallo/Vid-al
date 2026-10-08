@@ -7,96 +7,35 @@
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
 {% endblock %}
 {% block content %}
-    <div>
-        <h1>Algorithm settings :</h1>
+    <h1>Algorithm settings :</h1>
+    <div class="presetdiv" id="presetdiv"></div>
+
+    <div class="settingsdiv" id="settingsdiv">
+        Loading... (hopefully)
+    </div>
+    <h1>Your tags settings :</h1>
+    <div class="settingblock">
+        List of followed tags :
+        <ul class="taglist" id="taglist">
+            {% for tag in list_tags %}
+            <li class="taglistelement" id="{{tag}}">{{tag}}<img src="/images/close_cross.svg" class="imgbuttonicon" alt="X" onclick="remove_tag('{{tag}}')"></li>
+            {%endfor%}
+        </ul>
+    </div>
+    <div class="settingblock">
+        <input id="searchtagbar" 
+            onkeyup="search_tag()" 
+            type="text" name="search" 
+            placeholder="Search a tag">
         <div>
-            Like scale : 
-            <input id="likescaleinput"
-                    onkeyup="unlock_save(document.getElementById('likescalebutton'))"
-                    type="text"
-                    value="{{list_settings[0]}}"
-                    >
-            <button 
-                id="likescalebutton" 
-                onclick="save_setting(
-                    document.getElementById('likescaleinput'),
-                    this, 
-                    document.getElementById('likescalealert'),
-                    'new_like_scale',
-                    document.getElementById('likescalesuccess')
-                    )" 
-                class="githubbutton" 
-                disabled>
-                Save.
-            </button>
-            <span id="likescalealert" class="alert"></span>
-            <span id="likescalesuccess" class="success"></span>
-        </div>
-        <div>
-            View scale : 
-            <input id="viewscaleinput"
-                    onkeyup="unlock_save(document.getElementById('viewscalebutton'))"
-                    type="text"
-                    value="{{list_settings[1]}}"
-                    >
-            <button 
-                id="viewscalebutton" 
-                onclick="save_setting(
-                    document.getElementById('viewscaleinput'),
-                    this, 
-                    document.getElementById('viewscalealert'),
-                    'new_view_scale',
-                    document.getElementById('viewscalesuccess')
-                    )" 
-                class="githubbutton" 
-                disabled>
-                Save.
-            </button>
-            <span id="viewscalealert" class="alert"></span>
-            <span id="viewscalesuccess" class="success"></span>
-        </div>
-        <div>
-            Tag scale : 
-            <input id="tagscaleinput"
-                    onkeyup="unlock_save(document.getElementById('tagscalebutton'))"
-                    type="text"
-                    value="{{list_settings[2]}}"
-                    >
-            <button 
-                id="tagscalebutton" 
-                onclick="save_setting(
-                    document.getElementById('tagscaleinput'),
-                    this, 
-                    document.getElementById('tagscalealert'),
-                    'new_tag_scale',
-                    document.getElementById('tagscalesuccess')
-                    )" 
-                class="githubbutton" 
-                disabled>
-                Save.
-            </button>
-            <span id="tagscalealert" class="alert"></span>
-            <span id="tagscalesuccess" class="success"></span>
-        </div>
-        <div class="settingblock">
-            List of followed tags :
-            <ul class="taglist" id="taglist">
-                {% for tag in list_tags %}
-                <li class="taglistelement" id="{{tag}}">{{tag}}<img src="/images/close_cross.svg" class="imgbuttonicon" alt="X" onclick="remove_tag('{{tag}}')"></li>
-                {%endfor%}
+            <ul id="searchtagsresults">
             </ul>
         </div>
-        <div class="settingblock">
-            <input id="searchtagbar" 
-               onkeyup="search_tag()" 
-               type="text" name="search" 
-               placeholder="Search a tag">
-            <div>
-                <ul id="searchtagsresults">
-                </ul>
-            </div>
-        </div>
     </div>
+
+    <script>
+        let settings_dict = JSON.parse('{{settings_dict|tojson}}');
+    </script>
 
     <script src="/js/settings.js"></script>
 {% endblock %}

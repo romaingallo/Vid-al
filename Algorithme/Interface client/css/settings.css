@@ -4,3 +4,65 @@
 .success {
     color: chartreuse;
 }
+
+.presetdiv {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 20px
+}
+
+.yourpresettext {
+    font-size: 21px;
+    margin-left: 20px;
+}
+
+.presetselectorbtn {
+    font-size: 18px;
+    border: 1px solid rgba(27, 31, 35, 0.15);
+    padding: 6px 16px;
+    border-radius: 6px;
+    background-color: #FAFBFC;
+}
+
+.presetselectorbtn.selected {
+    background-color: #e0e0e0;
+}
+.presetselectorbtn.selected:hover {
+    background-color: #bababa;
+    transition-duration: 0.1s;
+}
+
+.presetselectorbtn:hover {
+    background-color: #F3F4F6;
+    transition-duration: 0.1s;
+}
+
+
+.mainsettingbuttons {
+    margin: 20px
+}
+
+.settingline {
+    margin: 8px;
+    display: inline-grid;
+    border-radius: 6px;
+    background-color: rgb(246 246 246);
+    padding: 6px;
+}
+.settingline:hover {
+    background-color: rgb(235, 235, 235);
+    transition-duration: 0.1s;
+}
+
+.settinginput {
+    margin: 20px
+}
+
+.red {
+    background-color: rgb(255, 78, 78);
+}
+
+.red:hover {
+    background-color: rgb(219, 67, 67);
+}
