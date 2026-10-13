@@ -34,25 +34,34 @@ def get_videos(username, limit, seen_video=[]):
     cur.execute("""SELECT *
                 FROM settings s 
                 WHERE s.settings_pk =1;""")
-    _, like_scale, view_scale, tags_scale, like_min, like_max, view_min, view_max, tags_min, tags_max, has_already_been_seen_scale, has_already_been_seen_min, has_already_been_seen_max, is_following_scale, is_following_min, is_following_max, _ = cur.fetchone()
-    get_tag_settings, use_tag_settings = '', ''
-    score_expr = '''(
-        %s * CBRT( COALESCE(lc.nb_likes,0) + COALESCE(v.youtube_likes, 0) - COALESCE(lc.nb_dislikes,0) )
-        + %s * ( CBRT( COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0) ) )
-        {use_tag_settings}
-    )'''
+    (_, like_scale, view_scale, tags_scale, 
+     like_min, like_max, view_min, view_max, tags_min, tags_max, 
+     has_already_been_seen_scale, has_already_been_seen_min, has_already_been_seen_max, 
+     is_following_scale, is_following_min, is_following_max, _) = cur.fetchone()
+
+    def clamp(expr):
+        return f'LEAST(GREATEST({expr}, %s), %s)'
+
+    like_comp = f'%s * ' + clamp(
+        'CBRT(COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)'
+        '     - COALESCE(lc.nb_dislikes, 0))'
+    )
+    view_comp = f'%s * ' + clamp(
+        'CBRT(COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0))'
+    )
 
     if username :
-        # cur.execute("""SELECT setting_like_scale, setting_view_scale, setting_tags_scale
-        #     FROM users
-        #     WHERE username = %s
-        #     ;""", [username])
         cur.execute("""SELECT s.*
                     FROM settings s
                     JOIN users u on u.active_settings_pk = s.settings_pk
                     WHERE username = %s
                     ;""", [username])
-        _, like_scale, view_scale, tags_scale, like_min, like_max, view_min, view_max, tags_min, tags_max, has_already_been_seen_scale, has_already_been_seen_min, has_already_been_seen_max, is_following_scale, is_following_min, is_following_max, _ = cur.fetchone()
+        (_, like_scale, view_scale, tags_scale, 
+        like_min, like_max, view_min, view_max, tags_min, tags_max, 
+        has_already_been_seen_scale, has_already_been_seen_min, has_already_been_seen_max, 
+        is_following_scale, is_following_min, is_following_max, _) = cur.fetchone()
+
+        # Nb of tags common between user and video
         get_tag_settings = '''LEFT JOIN(
                     SELECT videourl, COUNT(tcc.tags) AS nb_tags
                     FROM has_tag ht 
@@ -64,8 +73,13 @@ def get_videos(username, limit, seen_video=[]):
                     ) tcc ON ht.tags = tcc.tags
                     GROUP BY videourl
             ) tc ON tc.videourl = v.videourl'''
-        use_tag_settings = f'+ {tags_scale} * COALESCE(nb_tags, 0)'
 
+        # if user follow video author
+        get_follow_settings = '''LEFT JOIN is_following f
+            ON f.followed_pk = v.user_pk
+            AND f.follower_pk = (SELECT fu.user_pk FROM users fu WHERE fu.username = %s)'''
+
+        # if the video has already been watched
         get_seen_settings = '''LEFT JOIN (
             SELECT DISTINCT hbvb.videourl
             FROM has_been_viewed_by hbvb
@@ -74,13 +88,22 @@ def get_videos(username, limit, seen_video=[]):
         ) sv ON sv.videourl = v.videourl'''
         seen_col = "COALESCE(sv.videourl, '') <> '' AS already_seen"
 
-        score_for_row_number = score_expr.format(use_tag_settings=use_tag_settings)
+        tags_comp = f'%s * ' + clamp('COALESCE(tc.nb_tags, 0)')
+        follow_comp = f'%s * ' + clamp(
+            "CASE WHEN f.follower_pk IS NOT NULL THEN 1 ELSE 0 END"
+        )
+        seen_comp = f'%s * ' + clamp(
+            "CASE WHEN sv.videourl IS NOT NULL THEN 1 ELSE 0 END"
+        )
+
+        # seen_comp is negative here :
+        score_for_row_number = f'({like_comp} + {view_comp} + {tags_comp} + {follow_comp} - {seen_comp})'
 
     else:
-        get_seen_settings = ''
+        get_tag_settings = get_follow_settings = get_seen_settings = ''
         seen_col = 'False AS already_seen'
 
-        score_for_row_number = score_expr.format(use_tag_settings='')
+        score_for_row_number = f'({like_comp} + {view_comp})'
 
     request = f'''WITH ranked AS (
         SELECT v.videourl,
@@ -109,6 +132,7 @@ def get_videos(username, limit, seen_video=[]):
             GROUP BY videourl
         ) vc ON vc.videourl = v.videourl
         {get_tag_settings}
+        {get_follow_settings}
         {get_seen_settings}
         WHERE v.is_hidden = False
     )
@@ -125,15 +149,31 @@ def get_videos(username, limit, seen_video=[]):
     ;'''
 
     if username:
-        cur.execute(request, [like_scale, view_scale,
-                              username,
-                              username,
-                              seen_video,
-                              limit])
+        cur.execute(request, [
+            # like comp
+            like_scale, like_min, like_max,
+            # views comp
+            view_scale, view_min, view_max,
+            # tags comp
+            tags_scale, tags_min, tags_max,
+            # is_following comp
+            is_following_scale, is_following_min, is_following_max,
+            # has_already_been_seen comp
+            has_already_been_seen_scale, has_already_been_seen_min, has_already_been_seen_max,
+            username,   # get_tag_settings
+            username,   # get_follow_settings
+            username,   # get_seen_settings
+            # filter + limit
+            seen_video,
+            limit,
+        ])
     else:
-        cur.execute(request, [like_scale, view_scale,
-                              seen_video,
-                              limit])
+        cur.execute(request, [
+            like_scale, like_min, like_max,
+            view_scale, view_min, view_max,
+            seen_video,
+            limit,
+        ])
     result = cur.fetchall()
     close_connection(cur, conn)
 
