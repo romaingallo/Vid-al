@@ -125,19 +125,19 @@ async function createCard(i, data = null) {
     let is_hidden_class = ``;
     if (is_hidden){is_hidden_class = " is_hidden"}
 
-    let can_update_video = false;
+    let can_edit_video = false;
     let update_video_link = ``;
     if (typeof own_profile !== 'undefined') {
         if (own_profile) {
-            can_update_video = true;
+            can_edit_video = true;
         }
     }
-    if (typeof authorized_to_update_all_videos !== 'undefined') {
-        if (authorized_to_update_all_videos) {
-            can_update_video = true;
+    if (typeof authorized_to_edit_all_videos !== 'undefined') {
+        if (authorized_to_edit_all_videos) {
+            can_edit_video = true;
         }
     }
-    if (can_update_video)  {update_video_link=`<a class="editlink" href="${editvideourl}"><img class="editicon" src="/images/edit.svg" alt="Edit"></a>`;}
+    if (can_edit_video)  {update_video_link=`<a class="editlink" href="${editvideourl}"><img class="editicon" src="/images/edit.svg" alt="Edit"></a>`;}
 
     const card = document.createElement('article');
         card.className = 'video-card';

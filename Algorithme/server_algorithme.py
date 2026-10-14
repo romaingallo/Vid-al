@@ -404,33 +404,37 @@ def pfp_of(username):
     
 @app.route('/visit_channel/<channel_name>')
 def visit_channel(channel_name):
-    if len(channel_name) > 32:
+    if len(channel_name) > 32: # CHANGE THAT TO SOMETHING MORE SECURE THAT DOESNT BREAK
         flash("An error occured with the channel username")
         return redirect(url_for('home'))
     hostURL = get_host_url_from_username(channel_name)
     is_youtube_user = get_is_youtube_user(channel_name)
-    authorized_to_update_all_videos = False
+    authorized_to_edit_all_videos = False
+    can_update_youtube_channel = config.ALLOW_ANYONE_TO_UPDATE_YOUTUBE_CHANNEL
     if "user" in session : 
         authorized_user_to_update_channel = config.ALLOW_UPDATE_CHANNEL
         if config.ALLOW_AUTHORIZED_USERS_UPDATE_CHANNEL: authorized_user_to_update_channel = can_user_update_channel(session["user"])
-        if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
+        if config.ALLOW_AUTHORIZED_USERS_TO_EDIT_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_edit_all_videos = can_user_edit_all_videos_from_all_channels(session["user"])
+        if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_YOUTUBE_CHANNELS: can_update_youtube_channel = can_user_update_all_youtube_channels(session["user"])
         return render_template("html/visit_channel.html", 
                                    name=channel_name, 
                                    own_profile= session["user"] == channel_name, 
-                                   authorized_to_update_all_videos = authorized_to_update_all_videos,
+                                   authorized_to_edit_all_videos = authorized_to_edit_all_videos,
                                    hostURL = hostURL, is_youtube_user=is_youtube_user,
                                    connected = "user" in session,
                                    is_following = get_if_follow_channel(session["user"], channel_name),
                                    ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
-                                    ALLOW_UPDATE_CHANNEL = authorized_user_to_update_channel)
+                                   ALLOW_UPDATE_CHANNEL = authorized_user_to_update_channel,
+                                   can_update_youtube_channel = can_update_youtube_channel)
     return render_template("html/visit_channel.html", 
                            name=channel_name, 
                            own_profile=False, 
-                           authorized_to_update_all_videos = False,
+                           authorized_to_edit_all_videos = False,
                            hostURL = hostURL, is_youtube_user=is_youtube_user,
                            connected = "user" in session,
                            ALLOW_PFP_UPLOAD = config.ALLOW_PFP_UPLOAD,
-                           ALLOW_UPDATE_CHANNEL = config.ALLOW_UPDATE_CHANNEL)
+                           ALLOW_UPDATE_CHANNEL = config.ALLOW_UPDATE_CHANNEL,
+                           can_update_youtube_channel = can_update_youtube_channel)
 
 @app.route('/api/followedvideos/<offset>')
 def followedvideos(offset):
@@ -469,10 +473,10 @@ def userfollowedlist():
 def edit(channel_name, video_id):
     if not "user" in session:
         return redirect(url_for('home'))
-    authorized_to_update_all_videos = False
-    if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
-    authorized_to_update_all_videos = session["user"] == channel_name or authorized_to_update_all_videos
-    if not authorized_to_update_all_videos:
+    authorized_to_edit_all_videos = False
+    if config.ALLOW_AUTHORIZED_USERS_TO_EDIT_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_edit_all_videos = can_user_edit_all_videos_from_all_channels(session["user"])
+    authorized_to_edit_all_videos = session["user"] == channel_name or authorized_to_edit_all_videos
+    if not authorized_to_edit_all_videos:
         return redirect(url_for('home'))
     
     parameters = get_param_of_video(video_id)
@@ -489,9 +493,9 @@ def toggle_is_hidden():
         if "user" in session: 
             video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
-            authorized_to_update_all_videos = False
-            if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
-            if is_video_from(video_id, session["user"]) or authorized_to_update_all_videos:
+            authorized_to_edit_all_videos = False
+            if config.ALLOW_AUTHORIZED_USERS_TO_EDIT_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_edit_all_videos = can_user_edit_all_videos_from_all_channels(session["user"])
+            if is_video_from(video_id, session["user"]) or authorized_to_edit_all_videos:
                 if toggle_is_hidden_of(video_id):
                     return '', 200
                 else : return jsonify({"error": 'Toggle failed'}), 500
@@ -506,9 +510,9 @@ def remove_tag():
         if "user" in session: 
             video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
-            authorized_to_update_all_videos = False
-            if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
-            if is_video_from(video_id, session["user"]) or authorized_to_update_all_videos:
+            authorized_to_edit_all_videos = False
+            if config.ALLOW_AUTHORIZED_USERS_TO_EDIT_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_edit_all_videos = can_user_edit_all_videos_from_all_channels(session["user"])
+            if is_video_from(video_id, session["user"]) or authorized_to_edit_all_videos:
                 tag_name = sanitize_tag_name(request.form.get('tag_name'))
                 if not tag_name : return '', 400
                 if remove_tag_from_video(tag_name, video_id):
@@ -525,9 +529,9 @@ def add_tag():
         if "user" in session: 
             video_id = sanitize_generic_text(request.form.get('video_id'), 255)
             if not video_id : return '', 400
-            authorized_to_update_all_videos = False
-            if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_update_all_videos = can_user_update_all_videos_from_all_channels(session["user"])
-            if is_video_from(video_id, session["user"]) or authorized_to_update_all_videos:
+            authorized_to_edit_all_videos = False
+            if config.ALLOW_AUTHORIZED_USERS_TO_EDIT_ALL_VIDEOS_FROM_ALL_CHANNELS: authorized_to_edit_all_videos = can_user_edit_all_videos_from_all_channels(session["user"])
+            if is_video_from(video_id, session["user"]) or authorized_to_edit_all_videos:
                 list_tags_on_video = get_tags_of_video(video_id)
                 if len(list_tags_on_video)+1 > config.MAX_TAG_NUMBER_ON_VIDEO: return jsonify({"error": f'The video has already been tagged {config.MAX_TAG_NUMBER_ON_VIDEO} times (max per video).'}), 500
                 tag_name = sanitize_tag_name(request.form.get('tag_name'))
@@ -587,7 +591,7 @@ def watch(video_id):
         is_following = get_if_follow_channel(username, author_username)
     else :
         is_following = False
-        update_video_and_channel_with_delay_check(video_id)
+        if config.UPDATE_YOUTUBE_CHANNEL_ON_WATCH : update_video_and_channel_with_delay_check(video_id)
     if "user" in session: 
         username = session["user"]
         add_view(username, video_id)
@@ -695,6 +699,25 @@ def update_channel():
         return render_template("html/update_channel.html",
                                connected = "user" in session)
     return redirect(url_for('login'))
+
+@app.route('/update_youtube_channel_route/<channel_name>')
+def update_youtube_channel_route(channel_name):
+
+    if len(channel_name) > 32: # CHANGE THAT TO SOMETHING MORE SECURE THAT DOESNT BREAK
+        flash("An error occured with the channel username")
+        return redirect(url_for('visit_channel', channel_name=channel_name))
+
+    can_update_youtube_channel = config.ALLOW_ANYONE_TO_UPDATE_YOUTUBE_CHANNEL
+    if "user" in session : 
+        if config.ALLOW_AUTHORIZED_USERS_TO_UPDATE_ALL_YOUTUBE_CHANNELS: can_update_youtube_channel = can_user_update_all_youtube_channels(session["user"])
+    if not can_update_youtube_channel:
+        flash("Unauthorised")
+        return redirect(url_for('visit_channel', channel_name=channel_name))
+    
+    is_youtube_channel = get_is_youtube_user(channel_name)
+    if is_youtube_channel:
+        update_youtube_channel(channel_name)
+    return redirect(url_for('visit_channel', channel_name=channel_name))
 
 @app.route('/add_youtube_video', methods=['GET', 'POST'])
 def add_youtube_video():

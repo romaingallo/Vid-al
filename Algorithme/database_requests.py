@@ -1186,6 +1186,23 @@ def update_video_and_channel_with_delay_check(video_id):
         schearch_and_insert_latest_videos_from_one_channel_from_video_id(video_id)
 
 # do not spam
+def update_youtube_channel(channel_name):
+    # Get a video from the database, to update the channel
+    cur, conn = connection()
+    cur.execute("""SELECT v.videourl
+            FROM videos v
+            JOIN users u ON u.user_pk = v.user_pk
+            WHERE u.username = %s
+            ;""", [channel_name])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    if result : 
+        video_id = result[0]
+        schearch_and_insert_latest_videos_from_one_channel_from_video_id(video_id)
+    else :
+        raise ValueError(f"This channel needs at least one video. channel_name={channel_name}")
+
+# do not spam
 def fetch_and_add_video_tags(video_id):
     if not get_is_youtube_video(video_id):
         raise ValueError(f"This video is not registered as coming from Youtube. video_id={video_id}")
@@ -1215,9 +1232,9 @@ def can_user_update_channel(username):
     if result is None : return result
     return result[0]
 
-def can_user_update_all_videos_from_all_channels(username):
+def can_user_edit_all_videos_from_all_channels(username):
     cur, conn = connection()
-    cur.execute("""SELECT can_update_all_videos_from_all_channels
+    cur.execute("""SELECT can_edit_all_videos_from_all_channels
                 FROM users
                 WHERE username = %s
                 ;""", [username])
@@ -1229,6 +1246,17 @@ def can_user_update_all_videos_from_all_channels(username):
 def can_user_add_youtube_video(username):
     cur, conn = connection()
     cur.execute("""SELECT can_add_youtube_video
+                FROM users
+                WHERE username = %s
+                ;""", [username])
+    result = cur.fetchone()
+    close_connection(cur, conn)
+    if result is None : return False
+    return result[0]
+
+def can_user_update_all_youtube_channels(username):
+    cur, conn = connection()
+    cur.execute("""SELECT can_update_all_youtube_channels
                 FROM users
                 WHERE username = %s
                 ;""", [username])
@@ -1295,7 +1323,7 @@ if __name__ == "__main__" :
     # print(get_list_of_followed_channels('One'))
     # print(update_user_setting("like_scale", "one super settings", 0.5, "One"))
     # print(add_user_preset_settings("One"))
-    print(delete_user_preset_settings("One", "pre"))
+    # print(delete_user_preset_settings("One", "pre"))
     # print(get_user_active_setting("One"))
     # print(get_user_preset_settings("One"))
     # print(set_as_active_setting("One","one super settings"))
@@ -1311,7 +1339,7 @@ if __name__ == "__main__" :
 
     # print(can_user_update_channel("One"))
     # print(can_user_add_youtube_video("One"))
-    # print(can_user_update_all_videos_from_all_channels("One"))
+    # print(can_user_edit_all_videos_from_all_channels("One"))
 
     # print(get_video_data("Bird"))
     # print(get_video_data("hnzMih9HWEE"))
@@ -1326,4 +1354,7 @@ if __name__ == "__main__" :
 
     # print(attach_youtube_video_to_author("66BBKlEVpkU", force_api_key))
     # print(attach_all_youtube_video_to_author(force_api_key))
+
+    # update_youtube_channel("Grian")
+    # print(can_user_update_all_youtube_channels("One"))
     

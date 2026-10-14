@@ -54,8 +54,9 @@ CREATE TABLE public.users (
 	is_youtube_user bool NULL,
 	can_update_channel bool DEFAULT false NOT NULL,
 	can_add_youtube_video bool DEFAULT false NOT NULL,
-	can_update_all_videos_from_all_channels bool DEFAULT false NOT NULL,
+	can_edit_all_videos_from_all_channels bool DEFAULT false NOT NULL,
 	active_settings_pk int4 DEFAULT 1 NOT NULL,
+	can_update_all_youtube_channels bool DEFAULT false NOT NULL,
 	CONSTRAINT users_pk PRIMARY KEY (user_pk),
 	CONSTRAINT active_settings_fk FOREIGN KEY (active_settings_pk) REFERENCES public.settings(settings_pk)
 );
