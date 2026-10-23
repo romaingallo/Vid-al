@@ -72,7 +72,7 @@ CREATE TABLE public.videos (
 	videourl varchar NOT NULL,
 	user_pk int4 NULL,
 	is_hidden bool DEFAULT false NOT NULL,
-	first_upload date NULL,
+	first_upload timestamp NULL,
 	is_youtube_video bool DEFAULT false NULL,
 	youtube_views int8 DEFAULT 0 NOT NULL,
 	youtube_likes int8 DEFAULT 0 NOT NULL,
@@ -184,4 +184,37 @@ CREATE TABLE public.is_following (
 	CONSTRAINT is_following_unique UNIQUE (follower_pk, followed_pk),
 	CONSTRAINT followed_fk FOREIGN KEY (followed_pk) REFERENCES public.users(user_pk),
 	CONSTRAINT follower_fk FOREIGN KEY (follower_pk) REFERENCES public.users(user_pk)
+);
+
+
+-- public.playlists definition
+
+-- Drop table
+
+-- DROP TABLE public.playlists;
+
+CREATE TABLE public.playlists (
+	user_pk int4 NOT NULL,
+	playlist_name varchar NULL,
+	playlists_pk serial4 NOT NULL,
+	CONSTRAINT playlists_pk PRIMARY KEY (playlists_pk),
+	CONSTRAINT has_playlist_users_fk FOREIGN KEY (user_pk) REFERENCES public.users(user_pk)
+);
+
+
+-- public.playlist_video definition
+
+-- Drop table
+
+-- DROP TABLE public.playlist_video;
+
+CREATE TABLE public.playlist_video (
+	videourl varchar NOT NULL,
+	manual_order int4 NULL,
+	date_added_in_playlist timestamp DEFAULT now() NOT NULL,
+	playlists_video_pk int4 DEFAULT nextval('playlists_video_playlists_video_pk_seq'::regclass) NOT NULL,
+	playlists_pk int4 NOT NULL,
+	CONSTRAINT playlists_video_pk PRIMARY KEY (playlists_video_pk),
+	CONSTRAINT playlist_video_playlists_fk FOREIGN KEY (playlists_pk) REFERENCES public.playlists(playlists_pk),
+	CONSTRAINT playlists_videos_fk FOREIGN KEY (videourl) REFERENCES public.videos(videourl)
 );

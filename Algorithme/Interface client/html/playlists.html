@@ -1,0 +1,58 @@
+{% extends 'html/base.html' %}
+{% block title %}
+    <title>Vidéal - Your playlists</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/playlists.css">
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+{% endblock %}
+{% block content %}
+    <main class="playlists-page">
+        <h1 class="playlists-heading">Your playlists</h1>
+        <p class="playlist-message" id="playlist-message" role="status" aria-live="polite"></p>
+        <div class="playlists-layout">
+            <aside class="playlist-sidebar" aria-labelledby="playlist-list-heading">
+                <h2 id="playlist-list-heading">Playlists</h2>
+                <form class="playlist-create" id="playlist-create-form">
+                    <label for="new-playlist-name" class="visually-hidden">New playlist name</label>
+                    <input id="new-playlist-name" name="playlist_name" type="text" maxlength="80" placeholder="Create a playlist">
+                    <button type="submit">Create</button>
+                </form>
+                <nav class="playlist-list" id="playlist-list" aria-label="Your playlists"></nav>
+            </aside>
+
+            <section class="playlist-content" aria-labelledby="selected-playlist-name">
+                <div class="playlist-toolbar">
+                    <form class="playlist-rename" id="playlist-rename-form">
+                        <label for="selected-playlist-name" class="visually-hidden">Playlist name</label>
+                        <input id="selected-playlist-name" name="playlist_name" type="text" maxlength="80" aria-label="Playlist name">
+                        <button class="playlist-action" type="submit">Save name</button>
+                    </form>
+                    <button class="playlist-action playlist-delete" id="delete-playlist" type="button">Delete playlist</button>
+                </div>
+
+                <div class="playlist-controls">
+                    <div class="playlist-sort">
+                        <label for="playlist-sort-order">Sort videos</label>
+                        <select id="playlist-sort-order">
+                            <option value="manual">Manual order</option>
+                            <option value="date-desc">Upload date — newest first</option>
+                            <option value="date-asc">Upload date — oldest first</option>
+                            <option value="added-desc">Date added — newest first</option>
+                            <option value="added-asc">Date added — oldest first</option>
+                            <option value="title-asc">Title — A to Z ? (no title in db)</option>
+                            <option value="title-desc">Title — Z to A ? (no title in db)</option>
+                            <option value="score-desc">Highest score with current algorithme</option>
+                            <option value="score-asc">Lowest score with current algorithme</option>
+                            <option value="random">Random order</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="video-list" id="playlist-videos" aria-live="polite"></div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/js/playlist_playback.js"></script>
+    <script src="/js/playlists.js"></script>
+{% endblock %}

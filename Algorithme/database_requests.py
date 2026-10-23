@@ -1037,6 +1037,236 @@ def is_video_in_db(video_id):
     close_connection(cur, conn)
     return res != None
 
+# def get_playlist_list(username):
+#     cur, conn = connection()
+#     cur.execute("""SELECT p.playlist_name, p.playlists_pk, COUNT(pv.playlists_pk)
+#                 FROM playlists p
+#                 JOIN users u ON u.user_pk = p.user_pk
+#                 LEFT JOIN playlist_video pv ON pv.playlists_pk = p.playlists_pk 
+#                 WHERE u.username = %s
+#                 GROUP BY p.playlists_pk 
+#                 ORDER BY p.playlist_name
+#                 ;""", [username])
+#     res = cur.fetchall()
+#     close_connection(cur, conn)
+#     if not res: return []
+#     res = [{'name':row[0], 'id':row[1], 'nb_of_videos':row[2]} for row in res]
+#     return res
+
+def get_playlist_list_and_video_presence(username, video_id):
+    cur, conn = connection()
+    cur.execute("""SELECT p.playlist_name, p.playlists_pk, COUNT(pv.playlists_pk), BOOL_OR(pv.videourl = %s) AS is_in_playlist
+                FROM playlists p
+                JOIN users u ON u.user_pk = p.user_pk
+                LEFT JOIN playlist_video pv ON pv.playlists_pk = p.playlists_pk 
+                WHERE u.username = %s
+                GROUP BY p.playlists_pk 
+                ORDER BY p.playlist_name
+                ;""", [video_id, username])
+    res = cur.fetchall()
+    close_connection(cur, conn)
+    if not res: return []
+    res = [{'name':row[0], 'id':row[1], 'nb_of_videos':row[2], 'is_in_playlsit': bool(row[3])} for row in res]
+    return res
+
+def get_videos_from_all_playlists(username):
+    cur, conn = connection()
+    cur.execute("""SELECT p.playlist_name, p.playlists_pk
+                FROM playlists p
+                JOIN users u ON u.user_pk = p.user_pk
+                WHERE u.username = %s
+                ORDER BY p.playlist_name
+                ;""", [username])
+    playlists_list = cur.fetchall()
+    if not playlists_list:
+        close_connection(cur, conn) 
+        return []
+    playlists_list = [{'name':row[0], 'id':row[1]} for row in playlists_list]
+
+    for playlist in playlists_list:
+        cur.execute("""SELECT pv.videourl, 
+                            v.is_hidden, 
+                            v.is_youtube_video, 
+                            v.first_upload, 
+                            COALESCE(sv.videourl, '') <> '' AS already_seen, 
+                            COALESCE(lc.nb_likes, 0) + COALESCE(v.youtube_likes, 0)   AS nb_likes,
+                            COALESCE(vc.nb_views, 0) + COALESCE(v.youtube_views, 0)   AS nb_views,
+                            ch.username as author_name,
+                            ch.channel_url AS channel_url,
+                            pv.date_added_in_playlist AS date_added_in_playlist
+                        FROM playlists p
+                        JOIN users u ON u.user_pk = p.user_pk
+                        LEFT JOIN playlist_video pv ON p.playlists_pk = pv.playlists_pk
+                        LEFT JOIN videos v ON v.videourl  = pv.videourl
+                        LEFT JOIN (
+                                SELECT videourl,
+                                    COUNT(*) FILTER (WHERE NOT is_dislike) AS nb_likes,
+                                    COUNT(*) FILTER (WHERE is_dislike)     AS nb_dislikes
+                                FROM has_been_liked_by
+                                GROUP BY videourl
+                            ) lc ON lc.videourl = v.videourl
+                        LEFT JOIN (
+                                SELECT videourl, COUNT(*) AS nb_views
+                                FROM has_been_viewed_by
+                                GROUP BY videourl
+                            ) vc ON vc.videourl = v.videourl
+                        LEFT JOIN (
+                                SELECT DISTINCT hbvb.videourl
+                                FROM has_been_viewed_by hbvb
+                                JOIN users su ON su.user_pk = hbvb.user_pk
+                                WHERE su.username = %s
+                            ) sv ON sv.videourl = v.videourl
+                        LEFT JOIN users ch ON v.user_pk = ch.user_pk
+                        WHERE u.username = %s AND p.playlist_name = %s
+                        ORDER BY pv.playlists_pk
+                        ;""", [username, username, playlist['name']])
+        video_list = cur.fetchall()
+        if not video_list: video_list = []
+        else:
+            video_list = [{
+                "videourl":row[0],
+                "is_hidden" : row[1], 
+                "is_youtube_video" : row[2], 
+                "first_upload" : row[3], 
+                "already_seen" : row[4], 
+                "nb_likes" : row[5],
+                "nb_views" : row[6],
+                "author_name" : row[7],
+                "channel_url" : row[8],
+                "date_added_in_playlist" : row[9]
+            } for row in video_list if row[0] is not None]
+
+        for video in video_list:
+            if video["first_upload"]  is not None : video["first_upload"] = video["first_upload"].strftime("%d/%m/%Y")
+            if video["date_added_in_playlist"]  is not None : video["date_added_in_playlist"] = video["date_added_in_playlist"].strftime("%d/%m/%Y")
+
+        playlist['videos'] = video_list
+    
+    close_connection(cur, conn)
+    return playlists_list
+
+def check_is_playlist_author(username, playlist_name):
+    cur, conn = connection()
+    cur.execute("""SELECT 1
+                FROM playlists p
+                JOIN users u ON u.user_pk = p.user_pk
+                WHERE u.username = %s AND p.playlist_name = %s
+                ;""", [username, playlist_name])
+    res = cur.fetchone() is not None
+    close_connection(cur, conn)
+    return res
+
+# def get_playlist(username, playlist_name):
+#     cur, conn = connection()
+#     cur.execute("""SELECT pv.videourl
+#                 FROM playlists p
+#                 JOIN users u ON u.user_pk = p.user_pk
+#                 LEFT JOIN playlist_video pv ON p.playlists_pk = pv.playlists_pk
+#                 WHERE u.username = %s AND p.playlist_name = %s
+#                 ORDER BY pv.playlists_pk
+#                 ;""", [username, playlist_name])
+#     result = cur.fetchall()
+#     if not result: result = []
+#     else:
+#         result = [row[0] for row in result if row[0] is not None]
+#     close_connection(cur, conn)
+#     return result
+
+def add_new_playlist(username, playlist_name=None):
+
+    cur, conn = connection()
+
+    def get_nb_of_playlist(username):
+        cur.execute("""SELECT COUNT(*)
+                    FROM playlists p
+                    JOIN users u ON u.user_pk = p.user_pk 
+                    WHERE u.username = %s;""", [username])
+        return cur.fetchone()[0]
+    
+    if playlist_name == None:
+        nb_of_playlist = get_nb_of_playlist(username)
+        playlist_name = f'New playlist ({nb_of_playlist})'
+    else:
+        cur.execute("""SELECT COUNT(*)
+                    FROM playlists p
+                    JOIN users u ON u.user_pk = p.user_pk 
+                    WHERE u.username = %s AND p.playlist_name = %s
+                    ;""", [username, playlist_name])
+        same_name = cur.fetchone()[0]
+        if same_name > 0:
+            nb_of_playlist = get_nb_of_playlist(username)
+            playlist_name += f' ({nb_of_playlist})'
+    
+    cur.execute("""INSERT INTO playlists (user_pk, playlist_name)
+                SELECT u.user_pk, %s
+                FROM users u
+                WHERE u.username = %s
+                RETURNING playlists_pk
+                ;""", [playlist_name, username])
+    res = cur.fetchone() is not None
+    close_connection(cur, conn)
+    return res
+
+def add_video_to_playlist(username, video_id, playlist_name):
+    cur, conn = connection()
+    cur.execute("""INSERT INTO playlist_video (playlists_pk, videourl)
+                SELECT p.playlists_pk, v.videourl
+                FROM playlists p
+                JOIN users u ON u.user_pk = p.user_pk
+                JOIN videos v ON v.videourl = %s
+                WHERE u.username = %s AND p.playlist_name = %s
+                RETURNING playlists_video_pk
+                ;""", [video_id, username, playlist_name])
+    res = cur.fetchone() is not None
+    close_connection(cur, conn)
+    return res
+
+def remove_video_from_playlist(username, video_id, playlist_name):
+    cur, conn = connection()
+    cur.execute("""DELETE FROM playlist_video pv
+                USING playlists p, users u
+                WHERE pv.playlists_pk = p.playlists_pk
+                    AND p.user_pk = u.user_pk
+                    AND u.username = %s
+                    AND p.playlist_name = %s
+                    AND pv.videourl = %s
+                ;""", [username, playlist_name, video_id])
+    res = cur.rowcount > 0
+    close_connection(cur, conn)
+    return res
+
+def set_playlist_name(username, old_playlist_name, new_playlist_name):
+    cur, conn = connection()
+    cur.execute("""UPDATE playlists p
+                SET playlist_name=%s
+                WHERE p.playlist_name=%s AND p.user_pk = (SELECT user_pk FROM users WHERE username=%s)
+                RETURNING p.playlists_pk 
+                ;""", [new_playlist_name, old_playlist_name, username])
+    res = cur.rowcount > 0
+    close_connection(cur, conn)
+    return res
+
+def funcions_to_change_manual_order_and_functions_to_change_in_witch_order_a_playlist_is_played():pass
+
+def delete_playlist(username, playlist_name):
+    cur, conn = connection()
+    cur.execute(""" DELETE FROM playlist_video
+                WHERE playlists_pk = (
+                    SELECT p.playlists_pk
+                    FROM playlists p
+                    JOIN users u ON u.user_pk = p.user_pk
+                    WHERE u.username = %s AND p.playlist_name = %s
+                );""", [username, playlist_name])
+    cur.execute("""DELETE FROM playlists p
+                USING users u
+                WHERE p.user_pk = u.user_pk
+                    AND u.username = %s
+                    AND p.playlist_name = %s
+                ;""", [username, playlist_name])
+    res = cur.rowcount > 0
+    close_connection(cur, conn)
+    return res
+
 # do not spam:
 def update_youtube_video_stats_with_api(video_id, force_api_key=None):
     if not get_is_youtube_video(video_id):
@@ -1357,4 +1587,18 @@ if __name__ == "__main__" :
 
     # update_youtube_channel("Grian")
     # print(can_user_update_all_youtube_channels("One"))
+
+    # print(get_playlist_list("One"))
+    # print([(p['name'], [v["videourl"] for v in p['videos']]) for p in get_videos_from_all_playlists("One")])
+    # print(get_videos_from_all_playlists("One"))
+    # print(check_is_playlist_author("Username", "Not a playlist by On"))
+    # print(get_playlist("One", "Not a playlist by One"))
+    # print(add_new_playlist("One"))
+    # print(add_video_to_playlist("One", 'video_test_00', 'Stupid playlist'))
+    # print(remove_video_from_playlist("One", 'video_test_00', 'Stupid playlist'))
+    # print(delete_playlist("One", "New playlist (4)"))
+    # print(set_playlist_name("One", "aa", "aaa"))
+    # print(get_playlist_list_and_video_presence('One', 'Bird'))
+    # print(add_video_to_playlist("One", 'video_test_00', 'New playlist (2)'))
+    # print(delete_playlist("On", "Stupid playlist"))
     

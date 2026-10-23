@@ -151,14 +151,263 @@ async function createCard(i, data = null) {
                 </div>
                 ${is_youtube_video_icone}
                 ${update_video_link}
+                <div class="card-actions">
+                    <button class="more-options" type="button"
+                            aria-label="Video options" aria-expanded="false">
+                        ⋮
+                    </button>
+                    <div class="card-menu" hidden>
+                        <button type="button" data-action="add-to-playlist">Add to a playlist</button>
+                        <button type="button" data-action="add-to-queue">Add to queue</button>
+                        <button type="button" data-action="mark-as-seen">Set as already seen</button>
+                        <button type="button" data-action="share">Share</button>
+                    </div>
+                </div>
             </div>
         `;
+    card.dataset.videoId = data?.url ?? '';
+    card.dataset.videoTitle = title;
+    card.dataset.videoChannel = channel;
     return card;
 }
 
 const grid = document.createElement('div');
 grid.className = 'video-grid';
 gridcontent.appendChild(grid);
+
+
+// Playlist manager window
+async function addPlaylist(video) {
+    await fetch("/api/playlists_api", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `playlist_action=add_playlist`
+        })
+        .then(async response => {
+            if (!response.ok) {
+                // In case error (ex: 400, 500)
+                return response.json().then(err => {
+                    throw new Error(err.error || "Unknown error.");
+                });
+            }
+            // const data = await response.json();
+
+            OpenWindowAddVideoToPlaylist(video);
+            
+        })
+        .catch(error => {
+            console.error("Detailed error:", error);
+        });
+}
+
+async function onPlaylistCheckboxChange(video, playlist, is_in_playlist) {
+    await fetch("/api/playlists_api", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `playlist_action=toggle_video_to_playlist&playlist_name=${playlist.name}&video_id=${video.id}&toggle_value=${is_in_playlist}`
+        })
+        .then(async response => {
+            if (!response.ok) {
+                // In case error (ex: 400, 500)
+                return response.json().then(err => {
+                    throw new Error(err.error || "Unknown error.");
+                });
+            }
+            
+        })
+        .catch(error => {
+            console.error("Detailed error:", error);
+        });
+}
+
+function showPlaylistWindowManager(playlist_list, video) {
+    document.getElementById('playlist-window-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'playlist-window-overlay';
+    overlay.className = 'playlist-window-overlay';
+
+    const dialog = document.createElement('section');
+    dialog.className = 'playlist-window';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'playlist-window-title');
+
+    const header = document.createElement('header');
+    header.className = 'playlist-window-header';
+
+    const title = document.createElement('h2');
+    title.id = 'playlist-window-title';
+    title.textContent = 'Playlists';
+
+    const actions = document.createElement('div');
+    actions.className = 'playlist-window-actions';
+
+    const addButton = document.createElement('button');
+    addButton.className = 'playlist-window-button';
+    addButton.type = 'button';
+    addButton.textContent = '+';
+    addButton.setAttribute('aria-label', 'Add a playlist');
+    addButton.addEventListener('click', () => addPlaylist(video));
+
+    const closeButton = document.createElement('button');
+    closeButton.className = 'playlist-window-button';
+    closeButton.type = 'button';
+    closeButton.textContent = '×';
+    closeButton.setAttribute('aria-label', 'Close playlist window');
+
+    const closeWindow = () => {
+        overlay.remove();
+        document.removeEventListener('keydown', closeOnEscape);
+    };
+    const closeOnEscape = (event) => {
+        if (event.key === 'Escape') closeWindow();
+    };
+    closeButton.addEventListener('click', closeWindow);
+    document.addEventListener('keydown', closeOnEscape);
+
+    actions.append(addButton, closeButton);
+    header.append(title, actions);
+
+    const list = document.createElement('ul');
+    list.className = 'playlist-window-list';
+    list.id = 'playlist-window-list';
+
+    if (playlist_list.length === 0) {
+        const emptyMessage = document.createElement('li');
+        emptyMessage.className = 'playlist-window-empty';
+        emptyMessage.textContent = 'No playlists';
+        list.appendChild(emptyMessage);
+    } else {
+        for (const playlist of playlist_list) {
+            const item = document.createElement('li');
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            const playlistName = document.createElement('span');
+
+            checkbox.type = 'checkbox';
+            checkbox.checked = playlist.is_in_playlsit;
+            checkbox.addEventListener('change', () => {
+                onPlaylistCheckboxChange(video, playlist, checkbox.checked);
+            });
+            playlistName.textContent = playlist.name;
+
+            label.append(checkbox, playlistName);
+            item.appendChild(label);
+            list.appendChild(item);
+        }
+    }
+
+    dialog.append(header, list);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    closeButton.focus();
+}
+
+// ---- Show or hide video option menu
+function closeCardMenus() {
+    for (const menu of grid.querySelectorAll('.card-menu')) {
+        menu.hidden = true;
+        menu.parentElement.querySelector('.more-options')?.setAttribute('aria-expanded', 'false');
+    }
+}
+
+async function OpenWindowAddVideoToPlaylist(video) {
+
+    await fetch("/api/playlists_api", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `playlist_action=get_playlist_list_and_video_presence&video_id=${video.id}`
+        })
+        .then(async response => {
+            if (!response.ok) {
+                // In case error (ex: 400, 500)
+                return response.json().then(err => {
+                    throw new Error(err.error || "Unknown error.");
+                });
+            }
+            // Si tout va bien,
+            const data = await response.json();
+            showPlaylistWindowManager(data, video);
+        })
+        .catch(error => {
+            alert(error);
+            console.error("Detailed error:", error);
+        });
+
+}
+
+function addVideoToQueue(video) {
+    console.info('TODO: ajouter la vidéo à la file d’attente.', video);
+}
+
+function markVideoAsSeen(video) {
+    console.info('TODO: marquer la vidéo comme déjà vue.', video);
+}
+
+function shareVideo(video) {
+    console.info('TODO: partager la vidéo.', video);
+}
+
+const cardMenuActions = {
+    'add-to-playlist': OpenWindowAddVideoToPlaylist,
+    'add-to-queue': addVideoToQueue,
+    'mark-as-seen': markVideoAsSeen,
+    share: shareVideo
+};
+
+document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const actionButton = target.closest('.card-menu [data-action]');
+    if (actionButton && grid.contains(actionButton)) {
+        const card = actionButton.closest('.video-card');
+        const action = cardMenuActions[actionButton.dataset.action];
+        if (card && action) {
+            action({
+                id: card.dataset.videoId,
+                title: card.dataset.videoTitle,
+                channel: card.dataset.videoChannel
+            });
+        }
+        closeCardMenus();
+        return;
+    }
+
+    const optionsButton = target.closest('.more-options');
+    if (!optionsButton || !grid.contains(optionsButton)) {
+        closeCardMenus();
+        return;
+    }
+
+    const actions = optionsButton.closest('.card-actions');
+    const menu = actions?.querySelector('.card-menu');
+    if (!menu) return;
+
+    const shouldOpen = menu.hidden;
+    closeCardMenus();
+    menu.hidden = !shouldOpen;
+    optionsButton.setAttribute('aria-expanded', String(shouldOpen));
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+
+    const openMenu = grid.querySelector('.card-menu:not([hidden])');
+    if (!openMenu) return;
+
+    const optionsButton = openMenu.parentElement.querySelector('.more-options');
+    closeCardMenus();
+    optionsButton?.focus();
+});
+
 
 // Créer N cartes d'exemple
 loadFromServer()

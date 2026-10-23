@@ -12,7 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/4.2.1/videojs-dash.min.js"></script>
 {% endblock %}
 {% block content %}
-    <main id="contentwatch" class="contentwatch">
+    <main id="contentwatch" class="contentwatch" data-video-id="{{videoId}}">
 
         <div class="videopanel">
             {% if is_youtube_video %}
@@ -102,6 +102,11 @@
 
         <div id="gridcontent" class="gridcontent">
             
+            <aside class="playlistpanel" id="playlistpanel" aria-labelledby="playlist-panel-title" hidden>
+            <h2 class="watch-playlist-title" id="playlist-panel-title">Playlist</h2>
+            <ol class="watch-playlist-list" id="watch-playlist-list"></ol>
+        </aside>
+
         </div>
         
 
@@ -116,6 +121,7 @@
         <script src="/js/video_source.js"></script>
     {% endif %}
     <script src="/js/script.js"></script>
+    <script src="/js/playlist_playback.js"></script>
     <script src="/js/watch_reaction.js"></script>
     <script src="/js/deletecommentbutton.js"></script>
     <script src="/js/following.js"></script>

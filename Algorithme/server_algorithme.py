@@ -887,6 +887,86 @@ def add_user_followed_tag():
             return jsonify({"error": 'User Unauthorized'}), 401
     return '', 400
 
+@app.route('/playlists')
+def playlists():
+    return render_template("html/playlists.html",
+                           connected = "user" in session)
+
+@app.route('/api/playlists_api', methods=['POST'])
+def playlists_api():
+
+    if request.method != 'POST': return '', 400
+    if "user" not in session: return jsonify({"error": 'User unauthenticated'}), 401
+
+    playlist_action = sanitize_generic_text(request.form.get('playlist_action'))
+    if not playlist_action : return jsonify({"error": 'No playlist action received'}), 400
+
+    if playlist_action == 'add_playlist':
+        new_playlist_name = sanitize_generic_text(request.form.get('new_playlist_name'))
+        if not new_playlist_name : new_playlist_name = None
+        if add_new_playlist(session["user"], new_playlist_name):
+            playlists_list = get_videos_from_all_playlists(session["user"])
+            return jsonify(playlists_list)
+        else : jsonify({"error": 'Failed to add playlist'}), 500
+
+    elif playlist_action == 'get_all_playlists':
+        playlists_list = get_videos_from_all_playlists(session["user"])
+        return jsonify(playlists_list)
+
+    elif playlist_action == 'delete_playlist':
+        playlist_name = sanitize_generic_text(request.form.get('playlist_name'))
+        if not playlist_name : return jsonify({"error": 'No playlist name received'}), 400
+        if delete_playlist(session["user"], playlist_name):
+            playlists_list = get_videos_from_all_playlists(session["user"])
+            return jsonify(playlists_list)
+        else : jsonify({"error": 'Failed to delete playlist'}), 500
+
+    elif playlist_action == 'update_playlist_name':
+        old_playlist_name = sanitize_generic_text(request.form.get('old_playlist_name'))
+        if not old_playlist_name : return jsonify({"error": 'No old playlist name received'}), 400
+        new_playlist_name = sanitize_generic_text(request.form.get('new_playlist_name'))
+        if not new_playlist_name : return jsonify({"error": 'No new playlist name received'}), 400
+        if set_playlist_name(session["user"], old_playlist_name, new_playlist_name):
+            playlists_list = get_videos_from_all_playlists(session["user"])
+            return jsonify(playlists_list)
+        else : jsonify({"error": 'Failed to update playlist'}), 500
+
+    elif playlist_action == 'remove_video_from_playlist':
+        video_id = sanitize_generic_text(request.form.get('video_id'))
+        if not video_id : return jsonify({"error": 'No video_id received'}), 400
+        playlist_name = sanitize_generic_text(request.form.get('playlist_name'))
+        if not playlist_name : return jsonify({"error": 'No playlist name received'}), 400
+        if remove_video_from_playlist(session["user"], video_id, playlist_name):
+            return '', 200
+        else : jsonify({"error": 'Failed to update playlist'}), 500
+
+    elif playlist_action == 'toggle_video_to_playlist':
+            playlist_name = sanitize_generic_text(request.form.get('playlist_name'))
+            if not playlist_name : return jsonify({"error": 'No playlist name received'}), 400
+            video_id = sanitize_generic_text(request.form.get('video_id'))
+            if not video_id : return jsonify({"error": 'No video_id received'}), 400
+            toggle_value = sanitize_generic_text(request.form.get('toggle_value'))
+            if not toggle_value : return jsonify({"error": 'No toggle_value received'}), 400
+            # print(toggle_value, type(toggle_value))
+            if toggle_value == 'true':
+                if add_video_to_playlist(session["user"], video_id, playlist_name) : return '', 200
+                else : return jsonify({"error": 'Failed to add video in playlist'}), 500
+            else:
+                if remove_video_from_playlist(session["user"], video_id, playlist_name) : return '', 200
+                else : return jsonify({"error": 'Failed to remove video in playlist'}), 500
+            
+
+    elif playlist_action == 'get_playlist_list_and_video_presence':
+        video_id = sanitize_generic_text(request.form.get('video_id'))
+        if not video_id : return jsonify({"error": 'No video_id received'}), 400
+        playlists_list = get_playlist_list_and_video_presence(session["user"], video_id)
+        return jsonify(playlists_list)
+    
+
+    return '', 400
+        
+    
+
 if __name__ == '__main__':
     # app.run(host='127.0.0.1', port=5000, debug=True)
     config.database_password = os.environ["DATABASE_PASSWORD"]
